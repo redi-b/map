@@ -20,10 +20,10 @@ export const requestStatus = pgEnum("request_status", [
 ])
 export const stockStatus = pgEnum("stock_status", ["in_stock", "low_stock", "out_of_stock"])
 
-export const users = pgTable("users", {
+export const profiles = pgTable("profiles", {
   id: uuid("id").defaultRandom().primaryKey(),
+  authUserId: text("auth_user_id").notNull().unique(),
   fullName: text("full_name").notNull(),
-  email: text("email").notNull().unique(),
   phone: text("phone"),
   role: userRole("role").notNull().default("patient"),
   isActive: boolean("is_active").notNull().default(true),
@@ -32,7 +32,7 @@ export const users = pgTable("users", {
 
 export const pharmacies = pgTable("pharmacies", {
   id: uuid("id").defaultRandom().primaryKey(),
-  ownerId: uuid("owner_id").references(() => users.id),
+  ownerProfileId: uuid("owner_profile_id").references(() => profiles.id),
   name: text("name").notNull(),
   branchName: text("branch_name"),
   licenseNumber: text("license_number").notNull(),
@@ -68,7 +68,7 @@ export const inventoryItems = pgTable("inventory_items", {
 
 export const prescriptionRequests = pgTable("prescription_requests", {
   id: uuid("id").defaultRandom().primaryKey(),
-  patientId: uuid("patient_id").notNull().references(() => users.id),
+  patientProfileId: uuid("patient_profile_id").notNull().references(() => profiles.id),
   pharmacyId: uuid("pharmacy_id").references(() => pharmacies.id),
   status: requestStatus("status").notNull().default("submitted"),
   prescriptionImageUrl: text("prescription_image_url"),
@@ -82,7 +82,7 @@ export const prescriptionRequests = pgTable("prescription_requests", {
 
 export const medicationReminders = pgTable("medication_reminders", {
   id: uuid("id").defaultRandom().primaryKey(),
-  patientId: uuid("patient_id").notNull().references(() => users.id),
+  patientProfileId: uuid("patient_profile_id").notNull().references(() => profiles.id),
   medicineName: text("medicine_name").notNull(),
   dosage: text("dosage").notNull(),
   frequency: text("frequency").notNull(),
