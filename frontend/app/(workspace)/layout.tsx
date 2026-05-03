@@ -1,4 +1,5 @@
 import { AppSidebar } from "@/components/map/app-sidebar"
+import { AuthGate } from "@/components/auth/auth-gate"
 import { WorkspaceHeader } from "@/components/map/workspace-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 
@@ -11,10 +12,12 @@ export default function WorkspaceLayout({
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <div className="min-h-screen bg-background">
-          <WorkspaceHeader />
-          {children}
-        </div>
+        <AuthGate>
+          <div className="min-h-screen bg-background">
+            <WorkspaceHeader />
+            {children}
+          </div>
+        </AuthGate>
       </SidebarInset>
     </SidebarProvider>
   )

@@ -30,17 +30,17 @@ import {
 } from "@/components/ui/sidebar"
 
 const patientItems = [
-  { label: "Dashboard", icon: LayoutDashboardIcon, href: "/" },
-  { label: "Find Medicine", icon: PackageSearchIcon, href: "/find" },
-  { label: "Prescriptions", icon: ClipboardListIcon, href: "/prescriptions" },
-  { label: "Adherence", icon: ActivityIcon, href: "/adherence" },
-  { label: "AI Assistant", icon: BotIcon, href: "/assistant" },
+  { label: "Dashboard", icon: LayoutDashboardIcon, href: "/dashboard" },
+  { label: "Find Medicine", icon: PackageSearchIcon, href: "/dashboard/find" },
+  { label: "Prescriptions", icon: ClipboardListIcon, href: "/dashboard/prescriptions" },
+  { label: "Adherence", icon: ActivityIcon, href: "/dashboard/adherence" },
+  { label: "AI Assistant", icon: BotIcon, href: "/dashboard/assistant" },
 ]
 
 const pharmacyItems = [
-  { label: "Inventory", icon: PillIcon, href: "/pharmacy/inventory" },
-  { label: "Requests", icon: BellIcon, href: "/pharmacy/requests", badge: "12" },
-  { label: "Verification", icon: ShieldCheckIcon, href: "/pharmacy/verification" },
+  { label: "Inventory", icon: PillIcon, href: "/dashboard/pharmacy/inventory" },
+  { label: "Requests", icon: BellIcon, href: "/dashboard/pharmacy/requests", badge: "12" },
+  { label: "Verification", icon: ShieldCheckIcon, href: "/dashboard/pharmacy/verification" },
 ]
 
 export function AppSidebar() {
@@ -67,7 +67,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel>Patient workspace</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-2">
               {patientItems.map((item) => (
                 <SidebarMenuItem key={item.label}>
                   <SidebarMenuButton
@@ -86,7 +86,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel>Pharmacy desk</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-2">
               {pharmacyItems.map((item) => (
                 <SidebarMenuItem key={item.label}>
                   <SidebarMenuButton
@@ -105,7 +105,7 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <SidebarMenu>
+        <SidebarMenu className="gap-2">
           <SidebarMenuItem>
             <SidebarMenuButton tooltip="Support">
               <LifeBuoyIcon />
