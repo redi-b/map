@@ -1,3 +1,5 @@
+"use client"
+
 import {
   ActivityIcon,
   BellIcon,
@@ -10,6 +12,8 @@ import {
   SettingsIcon,
   ShieldCheckIcon,
 } from "lucide-react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 import {
   Sidebar,
   SidebarContent,
@@ -26,20 +30,22 @@ import {
 } from "@/components/ui/sidebar"
 
 const patientItems = [
-  { label: "Dashboard", icon: LayoutDashboardIcon, active: true },
-  { label: "Find Medicine", icon: PackageSearchIcon },
-  { label: "Prescriptions", icon: ClipboardListIcon },
-  { label: "Adherence", icon: ActivityIcon },
-  { label: "AI Assistant", icon: BotIcon },
+  { label: "Dashboard", icon: LayoutDashboardIcon, href: "/" },
+  { label: "Find Medicine", icon: PackageSearchIcon, href: "/find" },
+  { label: "Prescriptions", icon: ClipboardListIcon, href: "/prescriptions" },
+  { label: "Adherence", icon: ActivityIcon, href: "/adherence" },
+  { label: "AI Assistant", icon: BotIcon, href: "/assistant" },
 ]
 
 const pharmacyItems = [
-  { label: "Inventory", icon: PillIcon },
-  { label: "Requests", icon: BellIcon, badge: "12" },
-  { label: "Verification", icon: ShieldCheckIcon },
+  { label: "Inventory", icon: PillIcon, href: "/pharmacy/inventory" },
+  { label: "Requests", icon: BellIcon, href: "/pharmacy/requests", badge: "12" },
+  { label: "Verification", icon: ShieldCheckIcon, href: "/pharmacy/verification" },
 ]
 
 export function AppSidebar() {
+  const pathname = usePathname()
+
   return (
     <Sidebar collapsible="icon" variant="inset">
       <SidebarHeader>
@@ -64,7 +70,11 @@ export function AppSidebar() {
             <SidebarMenu>
               {patientItems.map((item) => (
                 <SidebarMenuItem key={item.label}>
-                  <SidebarMenuButton isActive={item.active} tooltip={item.label}>
+                  <SidebarMenuButton
+                    isActive={pathname === item.href}
+                    tooltip={item.label}
+                    render={<Link href={item.href} />}
+                  >
                     <item.icon />
                     <span>{item.label}</span>
                   </SidebarMenuButton>
@@ -79,7 +89,11 @@ export function AppSidebar() {
             <SidebarMenu>
               {pharmacyItems.map((item) => (
                 <SidebarMenuItem key={item.label}>
-                  <SidebarMenuButton tooltip={item.label}>
+                  <SidebarMenuButton
+                    isActive={pathname === item.href}
+                    tooltip={item.label}
+                    render={<Link href={item.href} />}
+                  >
                     <item.icon />
                     <span>{item.label}</span>
                   </SidebarMenuButton>

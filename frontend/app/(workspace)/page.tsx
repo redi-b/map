@@ -10,9 +10,6 @@ import {
   SendIcon,
   UploadIcon,
 } from "lucide-react"
-import { AppSidebar } from "@/components/map/app-sidebar"
-import { ThemeSwitcher } from "@/components/map/theme-switcher"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -24,12 +21,6 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
-import { Separator } from "@/components/ui/separator"
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
 import {
   Table,
   TableBody,
@@ -74,32 +65,7 @@ const inventory = [
 
 export default function Home() {
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <div className="min-h-screen bg-background">
-          <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
-            <div className="flex min-h-16 items-center justify-between gap-4 px-4 md:px-6">
-              <div className="flex min-w-0 items-center gap-3">
-                <SidebarTrigger />
-                <Separator orientation="vertical" className="h-6" />
-                <div className="min-w-0">
-                  <p className="truncate text-sm text-muted-foreground">Bole, Addis Ababa</p>
-                  <h1 className="truncate font-[var(--font-display)] text-xl font-semibold">
-                    Medicine Access Platform
-                  </h1>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <ThemeSwitcher />
-                <Avatar>
-                  <AvatarFallback>AK</AvatarFallback>
-                </Avatar>
-              </div>
-            </div>
-          </header>
-
-          <main className="flex flex-col gap-6 p-4 md:p-6">
+    <main className="flex flex-col gap-6 p-4 md:p-6">
             <section className="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
               <div className="flex min-h-[320px] flex-col justify-between gap-8 rounded-lg border bg-card p-6 shadow-sm">
                 <div className="flex flex-col gap-4">
@@ -278,9 +244,6 @@ export default function Home() {
                 </CardContent>
               </Card>
             </section>
-          </main>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    </main>
   )
 }
