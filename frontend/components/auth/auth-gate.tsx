@@ -84,7 +84,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex items-center gap-3 text-muted-foreground">
           <Loader2Icon className="size-5 animate-spin" />
-          Loading workspace
+          Loading dashboard
         </div>
       </div>
     )
@@ -114,7 +114,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangleIcon className="size-5" />
-              Workspace not available
+              Dashboard section not available
             </CardTitle>
             <CardDescription>
               Your current role does not include access to this section.

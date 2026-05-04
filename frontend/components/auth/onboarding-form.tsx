@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { getCurrentUser, saveProfile, type UserRole } from "@/lib/api"
+import { getRoleHomePath } from "@/lib/access"
 import { cn } from "@/lib/utils"
 
 const roles: Array<{ value: UserRole; label: string; description: string }> = [
@@ -37,7 +38,7 @@ export function OnboardingForm() {
         }
 
         if (currentUser.profile) {
-          router.replace("/dashboard")
+          router.replace(getRoleHomePath(currentUser.profile.role))
           return
         }
 
@@ -60,7 +61,7 @@ export function OnboardingForm() {
 
     try {
       await saveProfile({ fullName, phone, role })
-      router.replace("/dashboard")
+      router.replace(getRoleHomePath(role))
     } catch {
       setError("Unable to save profile")
     } finally {
@@ -80,8 +81,8 @@ export function OnboardingForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Set up your workspace</CardTitle>
-        <CardDescription>Your role controls which MAP tools appear in the dashboard.</CardDescription>
+        <CardTitle>Set up your MAP account</CardTitle>
+        <CardDescription>Your role controls which tools appear in the dashboard.</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="flex flex-col gap-5" onSubmit={onSubmit}>

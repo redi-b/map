@@ -6,6 +6,8 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { getCurrentUser } from "@/lib/api"
+import { getRoleHomePath } from "@/lib/access"
 import { authClient } from "@/lib/auth-client"
 
 export function LoginForm() {
@@ -29,14 +31,21 @@ export function LoginForm() {
       return
     }
 
-    router.replace(searchParams.get("next") ?? "/dashboard")
+    const currentUser = await getCurrentUser()
+
+    if (!currentUser?.profile) {
+      router.replace("/onboarding")
+      return
+    }
+
+    router.replace(searchParams.get("next") ?? getRoleHomePath(currentUser.profile.role))
   }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Welcome back</CardTitle>
-        <CardDescription>Sign in to access your MAP workspace.</CardDescription>
+        <CardDescription>Sign in to continue with MAP.</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="flex flex-col gap-4" onSubmit={onSubmit}>

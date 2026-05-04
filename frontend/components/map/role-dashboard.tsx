@@ -58,7 +58,7 @@ function PatientDashboard({ name }: { name: string }) {
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
       <section className="rounded-lg border bg-card p-6">
-        <Badge variant="secondary">Patient workspace</Badge>
+        <Badge variant="secondary">Patient dashboard</Badge>
         <h2 className="mt-4 font-[var(--font-display)] text-4xl font-semibold">Good morning, {name}</h2>
         <p className="mt-2 max-w-2xl text-muted-foreground">
           Search medicine stock, upload prescriptions, and keep today&apos;s doses on schedule.
@@ -90,7 +90,7 @@ function PharmacistDashboard({ name }: { name: string }) {
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
       <section className="rounded-lg border bg-card p-6">
-        <Badge variant="secondary">Pharmacy workspace</Badge>
+        <Badge variant="secondary">Pharmacy dashboard</Badge>
         <h2 className="mt-4 font-[var(--font-display)] text-4xl font-semibold">Inventory desk, {name}</h2>
         <p className="mt-2 max-w-2xl text-muted-foreground">
           Keep stock current and respond to prescription requests before patients start calling branch by branch.
@@ -119,7 +119,7 @@ function AdminDashboard({ name }: { name: string }) {
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
       <section className="rounded-lg border bg-card p-6">
-        <Badge variant="secondary">Admin workspace</Badge>
+        <Badge variant="secondary">Admin dashboard</Badge>
         <h2 className="mt-4 font-[var(--font-display)] text-4xl font-semibold">Platform controls, {name}</h2>
         <p className="mt-2 max-w-2xl text-muted-foreground">
           Review pharmacy access, monitor user roles, and keep the medicine network trustworthy.
