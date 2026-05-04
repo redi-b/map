@@ -58,7 +58,7 @@ function PatientDashboard({ name }: { name: string }) {
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
       <section className="rounded-lg border bg-card p-6">
-        <Badge variant="secondary">Patient dashboard</Badge>
+        <Badge variant="secondary">Care dashboard</Badge>
         <h2 className="mt-4 font-[var(--font-display)] text-4xl font-semibold">Good morning, {name}</h2>
         <p className="mt-2 max-w-2xl text-muted-foreground">
           Search medicine stock, upload prescriptions, and keep today&apos;s doses on schedule.
@@ -120,7 +120,7 @@ function OperationsDashboard({ name }: { name: string }) {
     <main className="flex flex-col gap-6 p-4 md:p-6">
       <section className="rounded-lg border bg-card p-6">
         <Badge variant="secondary">Operations dashboard</Badge>
-        <h2 className="mt-4 font-[var(--font-display)] text-4xl font-semibold">Platform controls, {name}</h2>
+        <h2 className="mt-4 font-[var(--font-display)] text-4xl font-semibold">Operations review, {name}</h2>
         <p className="mt-2 max-w-2xl text-muted-foreground">
           Review pharmacy access, monitor requests, and keep the medicine network trustworthy.
         </p>

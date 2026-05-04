@@ -1,8 +1,16 @@
 "use client"
 
-import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react"
+import { CheckIcon, MonitorIcon, MoonIcon, SunIcon } from "lucide-react"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 const themes = [
   { value: "light", label: "Light", icon: SunIcon },
@@ -16,25 +24,38 @@ export function ThemeSwitcher() {
   const activeTheme = themes.find((item) => item.value === currentTheme) ?? themes[2]
   const ActiveIcon = activeTheme.icon
 
-  function cycleTheme() {
-    const currentIndex = themes.findIndex((item) => item.value === currentTheme)
-    const nextTheme = themes[(currentIndex + 1) % themes.length] ?? themes[0]
-
-    setTheme(nextTheme.value)
-  }
-
   return (
-    <Button
-      type="button"
-      variant="outline"
-      size="icon"
-      className="rounded-full"
-      aria-label={`Theme: ${activeTheme.label}`}
-      title={`Theme: ${activeTheme.label}`}
-      onClick={cycleTheme}
-      suppressHydrationWarning
-    >
-      <ActiveIcon />
-    </Button>
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            aria-label="Choose theme"
+            suppressHydrationWarning
+          />
+        }
+      >
+        <ActiveIcon />
+        <span className="hidden sm:inline">{activeTheme.label}</span>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuLabel>Theme</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {themes.map((item) => {
+          const Icon = item.icon
+
+          return (
+            <DropdownMenuItem key={item.value} onClick={() => setTheme(item.value)}>
+              <Icon />
+              {item.label}
+              {currentTheme === item.value ? <CheckIcon className="ml-auto" /> : null}
+            </DropdownMenuItem>
+          )
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }

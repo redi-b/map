@@ -1,5 +1,25 @@
 import type { UserRole } from "./api"
 
+export const accessByRole: Record<UserRole, string[]> = {
+  patient: [
+    "/dashboard",
+    "/dashboard/find",
+    "/dashboard/prescriptions",
+    "/dashboard/adherence",
+    "/dashboard/assistant",
+  ],
+  pharmacist: [
+    "/dashboard",
+    "/dashboard/pharmacy/inventory",
+    "/dashboard/pharmacy/requests",
+  ],
+  admin: [
+    "/dashboard",
+    "/dashboard/pharmacy/verification",
+    "/dashboard/pharmacy/requests",
+  ],
+}
+
 export const roleHomePath: Record<UserRole, string> = {
   patient: "/dashboard",
   pharmacist: "/dashboard/pharmacy/inventory",
@@ -8,4 +28,14 @@ export const roleHomePath: Record<UserRole, string> = {
 
 export function getRoleHomePath(role?: UserRole | null) {
   return role ? roleHomePath[role] : "/dashboard"
+}
+
+export function canAccessDashboardPath(role: UserRole, pathname: string) {
+  return accessByRole[role].some((allowedPath) => pathname === allowedPath)
+}
+
+export function getRoleLabel(role?: UserRole | null) {
+  if (role === "pharmacist") return "Pharmacy workspace"
+  if (role === "admin") return "Operations workspace"
+  return "Care workspace"
 }

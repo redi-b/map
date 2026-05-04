@@ -4,16 +4,25 @@ import {
   ActivityIcon,
   BellIcon,
   BotIcon,
+  ChevronsUpDownIcon,
   ClipboardListIcon,
   LayoutDashboardIcon,
-  LifeBuoyIcon,
+  LogOutIcon,
   PackageSearchIcon,
   PillIcon,
-  SettingsIcon,
   ShieldCheckIcon,
 } from "lucide-react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Sidebar,
   SidebarContent,
@@ -28,13 +37,19 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import { canAccessDashboardPath, getRoleLabel } from "@/lib/access"
+import { authClient } from "@/lib/auth-client"
+import type { CurrentUser, UserRole } from "@/lib/api"
+
+const overviewItems = [
+  { label: "Dashboard", icon: LayoutDashboardIcon, href: "/dashboard" },
+]
 
 const patientItems = [
-  { label: "Dashboard", icon: LayoutDashboardIcon, href: "/dashboard" },
   { label: "Find Medicine", icon: PackageSearchIcon, href: "/dashboard/find" },
   { label: "Prescriptions", icon: ClipboardListIcon, href: "/dashboard/prescriptions" },
   { label: "Adherence", icon: ActivityIcon, href: "/dashboard/adherence" },
-  { label: "AI Assistant", icon: BotIcon, href: "/dashboard/assistant" },
+  { label: "Medication Guide", icon: BotIcon, href: "/dashboard/assistant" },
 ]
 
 const pharmacyItems = [
@@ -43,8 +58,36 @@ const pharmacyItems = [
   { label: "Verification", icon: ShieldCheckIcon, href: "/dashboard/pharmacy/verification" },
 ]
 
-export function AppSidebar() {
+function getInitials(name?: string | null, email?: string) {
+  const source = name?.trim() || email || "MAP"
+  return source
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase()
+}
+
+function getVisibleItems<T extends { href: string }>(role: UserRole, items: T[]) {
+  return items.filter((item) => canAccessDashboardPath(role, item.href))
+}
+
+export function AppSidebar({ currentUser }: { currentUser: CurrentUser }) {
   const pathname = usePathname()
+  const router = useRouter()
+  const profile = currentUser.profile
+  const role = profile?.role ?? "patient"
+  const overviewNavigation = getVisibleItems(role, overviewItems)
+  const patientNavigation = getVisibleItems(role, patientItems)
+  const pharmacyNavigation = getVisibleItems(role, pharmacyItems)
+  const displayName = profile?.fullName || currentUser.session.user.name || currentUser.session.user.email
+  const initials = getInitials(displayName, currentUser.session.user.email)
+
+  async function signOut() {
+    await authClient.signOut()
+    router.replace("/login")
+    router.refresh()
+  }
 
   return (
     <Sidebar collapsible="icon" variant="inset">
@@ -57,7 +100,9 @@ export function AppSidebar() {
               </div>
               <div className="flex min-w-0 flex-col">
                 <span className="truncate font-semibold">MAP</span>
-                <span className="truncate text-xs text-sidebar-foreground/70">Addis Ababa</span>
+                <span className="truncate text-xs text-sidebar-foreground/70">
+                  {getRoleLabel(role)}
+                </span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -65,10 +110,10 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Patient tools</SidebarGroupLabel>
+          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-2">
-              {patientItems.map((item) => (
+              {overviewNavigation.map((item) => (
                 <SidebarMenuItem key={item.label}>
                   <SidebarMenuButton
                     isActive={pathname === item.href}
@@ -83,40 +128,80 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel>Pharmacy desk</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-2">
-              {pharmacyItems.map((item) => (
-                <SidebarMenuItem key={item.label}>
-                  <SidebarMenuButton
-                    isActive={pathname === item.href}
-                    tooltip={item.label}
-                    render={<Link href={item.href} />}
-                  >
-                    <item.icon />
-                    <span>{item.label}</span>
-                  </SidebarMenuButton>
-                  {item.badge ? <SidebarMenuBadge>{item.badge}</SidebarMenuBadge> : null}
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {patientNavigation.length ? (
+          <SidebarGroup>
+            <SidebarGroupLabel>Care tools</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-2">
+                {patientNavigation.map((item) => (
+                  <SidebarMenuItem key={item.label}>
+                    <SidebarMenuButton
+                      isActive={pathname === item.href}
+                      tooltip={item.label}
+                      render={<Link href={item.href} />}
+                    >
+                      <item.icon />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : null}
+        {pharmacyNavigation.length ? (
+          <SidebarGroup>
+            <SidebarGroupLabel>{role === "admin" ? "Operations" : "Pharmacy desk"}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-2">
+                {pharmacyNavigation.map((item) => (
+                  <SidebarMenuItem key={item.label}>
+                    <SidebarMenuButton
+                      isActive={pathname === item.href}
+                      tooltip={item.label}
+                      render={<Link href={item.href} />}
+                    >
+                      <item.icon />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                    {item.badge ? <SidebarMenuBadge>{item.badge}</SidebarMenuBadge> : null}
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : null}
       </SidebarContent>
       <SidebarFooter>
-        <SidebarMenu className="gap-2">
+        <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton tooltip="Support">
-              <LifeBuoyIcon />
-              <span>Support</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton tooltip="Settings">
-              <SettingsIcon />
-              <span>Settings</span>
-            </SidebarMenuButton>
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<SidebarMenuButton size="lg" tooltip="Account" />}>
+                <Avatar className="size-8 rounded-md">
+                  <AvatarFallback className="rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate text-sm font-medium">{displayName}</span>
+                  <span className="truncate text-xs text-sidebar-foreground/70">
+                    {currentUser.session.user.email}
+                  </span>
+                </div>
+                <ChevronsUpDownIcon className="ml-auto" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" side="right" className="w-64">
+                <DropdownMenuLabel>
+                  <span className="block truncate font-medium text-foreground">{displayName}</span>
+                  <span className="block truncate font-normal">{getRoleLabel(role)}</span>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={signOut} variant="destructive">
+                  <LogOutIcon />
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

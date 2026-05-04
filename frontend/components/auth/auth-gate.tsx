@@ -5,38 +5,14 @@ import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { getCurrentUser, type CurrentUser, type UserRole } from "@/lib/api"
+import { canAccessDashboardPath, getRoleHomePath } from "@/lib/access"
+import { getCurrentUser, type CurrentUser } from "@/lib/api"
 
-const accessByRole: Record<UserRole, string[]> = {
-  patient: [
-    "/dashboard",
-    "/dashboard/find",
-    "/dashboard/prescriptions",
-    "/dashboard/adherence",
-    "/dashboard/assistant",
-  ],
-  pharmacist: [
-    "/dashboard",
-    "/dashboard/pharmacy/inventory",
-    "/dashboard/pharmacy/requests",
-  ],
-  admin: [
-    "/dashboard",
-    "/dashboard/find",
-    "/dashboard/prescriptions",
-    "/dashboard/adherence",
-    "/dashboard/assistant",
-    "/dashboard/pharmacy/inventory",
-    "/dashboard/pharmacy/requests",
-    "/dashboard/pharmacy/verification",
-  ],
+type AuthGateProps = {
+  children: React.ReactNode | ((currentUser: CurrentUser) => React.ReactNode)
 }
 
-function canAccess(role: UserRole, pathname: string) {
-  return accessByRole[role].some((allowedPath) => pathname === allowedPath)
-}
-
-export function AuthGate({ children }: { children: React.ReactNode }) {
+export function AuthGate({ children }: AuthGateProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [user, setUser] = useState<CurrentUser | null>(null)
@@ -76,7 +52,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   const allowed = useMemo(() => {
     if (!user?.profile) return false
-    return canAccess(user.profile.role, pathname)
+    return canAccessDashboardPath(user.profile.role, pathname)
   }, [pathname, user])
 
   if (loading) {
@@ -114,19 +90,21 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangleIcon className="size-5" />
-              Dashboard section not available
+              This area is not part of your workspace
             </CardTitle>
             <CardDescription>
-              Your current role does not include access to this section.
+              We will take you back to the tools set up for your account.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => router.replace("/dashboard")}>Back to dashboard</Button>
+            <Button onClick={() => router.replace(getRoleHomePath(user.profile?.role))}>
+              Go to my workspace
+            </Button>
           </CardContent>
         </Card>
       </div>
     )
   }
 
-  return children
+  return typeof children === "function" ? children(user) : children
 }

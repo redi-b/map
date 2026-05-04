@@ -33,27 +33,54 @@ export function RegisterForm() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Create your account</CardTitle>
-        <CardDescription>Save medicine searches, prescription requests, and pharmacy updates.</CardDescription>
+    <Card className="border-border/70 shadow-sm">
+      <CardHeader className="space-y-2">
+        <CardTitle className="font-[var(--font-display)] text-2xl">Create an account</CardTitle>
+        <CardDescription>
+          Set up a secure workspace for care requests or pharmacy operations.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form className="flex flex-col gap-4" onSubmit={onSubmit}>
           <label className="flex flex-col gap-2 text-sm font-medium">
             Full name
-            <Input value={name} onChange={(event) => setName(event.target.value)} required />
+            <Input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              autoComplete="name"
+              placeholder="Your name"
+              required
+            />
           </label>
           <label className="flex flex-col gap-2 text-sm font-medium">
             Email
-            <Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+            <Input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              autoComplete="email"
+              placeholder="you@example.com"
+              required
+            />
           </label>
           <label className="flex flex-col gap-2 text-sm font-medium">
             Password
-            <Input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required minLength={8} />
+            <Input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="new-password"
+              placeholder="At least 8 characters"
+              required
+              minLength={8}
+            />
           </label>
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
-          <Button type="submit" disabled={loading}>
+          {error ? (
+            <p className="rounded-md border border-destructive/25 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
+          <Button type="submit" size="lg" disabled={loading}>
             {loading ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
             Create account
           </Button>
