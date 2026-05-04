@@ -1,28 +1,33 @@
 import { ShieldCheckIcon } from "lucide-react"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { ThemeSwitcher } from "./theme-switcher"
 
 export function PublicNav() {
   return (
-    <header className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5">
-      <Link href="/" className="flex items-center gap-3 font-[var(--font-display)] font-semibold">
-        <span className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-          <ShieldCheckIcon className="size-5" />
-        </span>
-        MAP
-      </Link>
-      <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
-        <a href="#how-it-works">How it works</a>
-        <a href="#roles">Roles</a>
-        <a href="#trust">Trust</a>
-      </nav>
-      <div className="flex items-center gap-2">
-        <div className="hidden sm:block">
+    <header className="sticky top-0 z-20 border-b bg-background/90 backdrop-blur">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4">
+        <Link href="/" className="flex items-center gap-3 font-[var(--font-display)] font-semibold">
+          <span className="flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
+            <ShieldCheckIcon />
+          </span>
+          MAP
+        </Link>
+        <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
+          <Link className="transition hover:text-foreground" href="/#how-it-works">How it works</Link>
+          <Link className="transition hover:text-foreground" href="/#for-patients">For patients</Link>
+          <Link className="transition hover:text-foreground" href="/#for-pharmacies">For pharmacies</Link>
+        </nav>
+        <div className="flex items-center gap-2">
+          <Link className={cn(buttonVariants({ variant: "ghost" }), "hidden sm:inline-flex")} href="/login">
+            Sign in
+          </Link>
+          <Link className={buttonVariants()} href="/register">
+            Create account
+          </Link>
           <ThemeSwitcher />
         </div>
-        <Button variant="ghost" render={<Link href="/login" />}>Sign in</Button>
-        <Button render={<Link href="/register" />}>Create account</Button>
       </div>
     </header>
   )

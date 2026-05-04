@@ -1,22 +1,25 @@
 import Link from "next/link"
 import { Suspense } from "react"
 import { LoginForm } from "@/components/auth/login-form"
-import { PublicNav } from "@/components/map/public-nav"
+import { AuthNav } from "@/components/map/auth-nav"
 
 export default function LoginPage() {
   return (
-    <main className="min-h-screen bg-background">
-      <PublicNav />
+    <main className="min-h-screen bg-background text-foreground">
+      <AuthNav />
       <div className="grid min-h-[calc(100vh-5rem)] gap-5 p-5 lg:grid-cols-[0.95fr_1.05fr]">
         <section className="hidden flex-col justify-between rounded-lg border bg-secondary p-8 lg:flex">
           <div>
-            <p className="text-sm font-semibold uppercase text-muted-foreground">MAP access</p>
+            <p className="text-sm font-semibold uppercase text-muted-foreground">Welcome back</p>
             <h1 className="mt-4 max-w-xl font-[var(--font-display)] text-5xl font-semibold">
-              One account for patients, pharmacies, and administrators.
+              Pick up where your medicine search left off.
             </h1>
+            <p className="mt-4 max-w-xl text-muted-foreground">
+              Sign in to check saved requests, prescription replies, and reminders connected to your care.
+            </p>
           </div>
           <div className="grid gap-3">
-            {["Verified stock search", "Prescription request tracking", "Role-aware dashboards"].map((item) => (
+            {["Nearby stock search", "Prescription request tracking", "Dose and refill reminders"].map((item) => (
               <div key={item} className="rounded-lg bg-background p-4 font-medium">{item}</div>
             ))}
           </div>

@@ -15,7 +15,7 @@ export default function PharmacyVerificationPage() {
       <Card>
         <CardHeader>
           <CardTitle>Pharmacy verification</CardTitle>
-          <CardDescription>Admin-managed pharmacy onboarding and license checks.</CardDescription>
+          <CardDescription>Pharmacy onboarding and license checks for verified participation.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           {pharmacies.map(([name, neighborhood, status]) => (

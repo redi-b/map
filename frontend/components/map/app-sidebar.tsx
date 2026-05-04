@@ -65,7 +65,7 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Patient workspace</SidebarGroupLabel>
+          <SidebarGroupLabel>Patient tools</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-2">
               {patientItems.map((item) => (

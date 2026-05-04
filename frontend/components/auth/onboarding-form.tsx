@@ -11,9 +11,8 @@ import { getRoleHomePath } from "@/lib/access"
 import { cn } from "@/lib/utils"
 
 const roles: Array<{ value: UserRole; label: string; description: string }> = [
-  { value: "patient", label: "Patient", description: "Search medicine, upload prescriptions, and manage reminders." },
-  { value: "pharmacist", label: "Pharmacist", description: "Manage inventory and respond to prescription requests." },
-  { value: "admin", label: "Admin", description: "Verify pharmacies and monitor platform access." },
+  { value: "patient", label: "Patient or caregiver", description: "Search medicine, upload prescriptions, and manage reminders." },
+  { value: "pharmacist", label: "Pharmacy", description: "Manage availability and respond to prescription requests." },
 ]
 
 export function OnboardingForm() {
@@ -82,7 +81,7 @@ export function OnboardingForm() {
     <Card>
       <CardHeader>
         <CardTitle>Set up your MAP account</CardTitle>
-        <CardDescription>Your role controls which tools appear in the dashboard.</CardDescription>
+        <CardDescription>Choose how you plan to use MAP.</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="flex flex-col gap-5" onSubmit={onSubmit}>
@@ -94,7 +93,7 @@ export function OnboardingForm() {
             Phone
             <Input value={phone} onChange={(event) => setPhone(event.target.value)} />
           </label>
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2">
             {roles.map((item) => (
               <button
                 key={item.value}
@@ -110,6 +109,7 @@ export function OnboardingForm() {
               </button>
             ))}
           </div>
+          <p className="text-sm text-muted-foreground">MAP staff access is assigned separately.</p>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <Button type="submit" disabled={saving}>
             {saving ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}

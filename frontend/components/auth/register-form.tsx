@@ -35,8 +35,8 @@ export function RegisterForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Create account</CardTitle>
-        <CardDescription>Start with one account, then choose your MAP role.</CardDescription>
+        <CardTitle>Create your account</CardTitle>
+        <CardDescription>Save medicine searches, prescription requests, and pharmacy updates.</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="flex flex-col gap-4" onSubmit={onSubmit}>

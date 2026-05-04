@@ -3,7 +3,6 @@
 import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 
 const themes = [
   { value: "light", label: "Light", icon: SunIcon },
@@ -14,27 +13,28 @@ const themes = [
 export function ThemeSwitcher() {
   const { theme, setTheme } = useTheme()
   const currentTheme = theme ?? "system"
+  const activeTheme = themes.find((item) => item.value === currentTheme) ?? themes[2]
+  const ActiveIcon = activeTheme.icon
+
+  function cycleTheme() {
+    const currentIndex = themes.findIndex((item) => item.value === currentTheme)
+    const nextTheme = themes[(currentIndex + 1) % themes.length] ?? themes[0]
+
+    setTheme(nextTheme.value)
+  }
 
   return (
-    <div className="flex items-center gap-1 rounded-lg border bg-card p-1" suppressHydrationWarning>
-      {themes.map((item) => {
-        const Icon = item.icon
-        const active = currentTheme === item.value
-
-        return (
-          <Button
-            key={item.value}
-            type="button"
-            variant={active ? "secondary" : "ghost"}
-            size="sm"
-            className={cn("h-7 px-2 text-xs", active && "shadow-xs")}
-            onClick={() => setTheme(item.value)}
-          >
-            <Icon data-icon="inline-start" />
-            {item.label}
-          </Button>
-        )
-      })}
-    </div>
+    <Button
+      type="button"
+      variant="outline"
+      size="icon"
+      className="rounded-full"
+      aria-label={`Theme: ${activeTheme.label}`}
+      title={`Theme: ${activeTheme.label}`}
+      onClick={cycleTheme}
+      suppressHydrationWarning
+    >
+      <ActiveIcon />
+    </Button>
   )
 }

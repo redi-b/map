@@ -14,7 +14,7 @@ const routeLabels: Record<string, { eyebrow: string; title: string }> = {
   "/dashboard/assistant": { eyebrow: "Medication guidance", title: "AI health assistant" },
   "/dashboard/pharmacy/inventory": { eyebrow: "Branch operations", title: "Inventory" },
   "/dashboard/pharmacy/requests": { eyebrow: "Pharmacy desk", title: "Requests" },
-  "/dashboard/pharmacy/verification": { eyebrow: "Admin controls", title: "Verification" },
+  "/dashboard/pharmacy/verification": { eyebrow: "Operations", title: "Verification" },
 }
 
 export function WorkspaceHeader() {
@@ -24,9 +24,9 @@ export function WorkspaceHeader() {
   return (
     <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
       <div className="flex min-h-16 items-center justify-between gap-4 px-4 md:px-6">
-        <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 items-center gap-3">
           <SidebarTrigger />
-          <Separator orientation="vertical" className="mx-1 h-5" />
+          <Separator orientation="vertical" className="h-6" />
           <div className="min-w-0">
             <p className="truncate text-sm text-muted-foreground">{labels.eyebrow}</p>
             <h1 className="truncate font-[var(--font-display)] text-xl font-semibold">

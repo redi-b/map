@@ -12,7 +12,7 @@ import {
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { getCurrentUser, type CurrentUser } from "@/lib/api"
@@ -48,7 +48,7 @@ export function RoleDashboard() {
   }
 
   if (user.profile.role === "admin") {
-    return <AdminDashboard name={user.profile.fullName} />
+    return <OperationsDashboard name={user.profile.fullName} />
   }
 
   return <PatientDashboard name={user.profile.fullName} />
@@ -64,14 +64,14 @@ function PatientDashboard({ name }: { name: string }) {
           Search medicine stock, upload prescriptions, and keep today&apos;s doses on schedule.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
-          <Button render={<Link href="/dashboard/find" />}>
+          <Link className={buttonVariants()} href="/dashboard/find">
             <PackageSearchIcon data-icon="inline-start" />
             Find medicine
-          </Button>
-          <Button variant="outline" render={<Link href="/dashboard/prescriptions" />}>
+          </Link>
+          <Link className={buttonVariants({ variant: "outline" })} href="/dashboard/prescriptions">
             <ClipboardCheckIcon data-icon="inline-start" />
             Upload prescription
-          </Button>
+          </Link>
         </div>
       </section>
       <section className="grid gap-4 md:grid-cols-3">
@@ -96,14 +96,14 @@ function PharmacistDashboard({ name }: { name: string }) {
           Keep stock current and respond to prescription requests before patients start calling branch by branch.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
-          <Button render={<Link href="/dashboard/pharmacy/inventory" />}>
+          <Link className={buttonVariants()} href="/dashboard/pharmacy/inventory">
             <ActivityIcon data-icon="inline-start" />
             Manage inventory
-          </Button>
-          <Button variant="outline" render={<Link href="/dashboard/pharmacy/requests" />}>
+          </Link>
+          <Link className={buttonVariants({ variant: "outline" })} href="/dashboard/pharmacy/requests">
             <BellIcon data-icon="inline-start" />
             Review requests
-          </Button>
+          </Link>
         </div>
       </section>
       <section className="grid gap-4 md:grid-cols-3">
@@ -115,24 +115,24 @@ function PharmacistDashboard({ name }: { name: string }) {
   )
 }
 
-function AdminDashboard({ name }: { name: string }) {
+function OperationsDashboard({ name }: { name: string }) {
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
       <section className="rounded-lg border bg-card p-6">
-        <Badge variant="secondary">Admin dashboard</Badge>
+        <Badge variant="secondary">Operations dashboard</Badge>
         <h2 className="mt-4 font-[var(--font-display)] text-4xl font-semibold">Platform controls, {name}</h2>
         <p className="mt-2 max-w-2xl text-muted-foreground">
-          Review pharmacy access, monitor user roles, and keep the medicine network trustworthy.
+          Review pharmacy access, monitor requests, and keep the medicine network trustworthy.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
-          <Button render={<Link href="/dashboard/pharmacy/verification" />}>
+          <Link className={buttonVariants()} href="/dashboard/pharmacy/verification">
             <ShieldCheckIcon data-icon="inline-start" />
             Verify pharmacies
-          </Button>
-          <Button variant="outline" render={<Link href="/dashboard/pharmacy/requests" />}>
+          </Link>
+          <Link className={buttonVariants({ variant: "outline" })} href="/dashboard/pharmacy/requests">
             <UsersIcon data-icon="inline-start" />
             Monitor requests
-          </Button>
+          </Link>
         </div>
       </section>
       <section className="grid gap-4 md:grid-cols-3">

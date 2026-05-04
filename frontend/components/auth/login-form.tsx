@@ -44,8 +44,8 @@ export function LoginForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Welcome back</CardTitle>
-        <CardDescription>Sign in to continue with MAP.</CardDescription>
+        <CardTitle>Sign in to MAP</CardTitle>
+        <CardDescription>Continue to your saved requests, prescriptions, and reminders.</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="flex flex-col gap-4" onSubmit={onSubmit}>
