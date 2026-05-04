@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -191,15 +192,17 @@ export function AppSidebar({ currentUser }: { currentUser: CurrentUser }) {
                 <ChevronsUpDownIcon className="ml-auto" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" side="right" className="w-64">
-                <DropdownMenuLabel>
-                  <span className="block truncate font-medium text-foreground">{displayName}</span>
-                  <span className="block truncate font-normal">{getRoleLabel(role)}</span>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={signOut} variant="destructive">
-                  <LogOutIcon />
-                  Sign out
-                </DropdownMenuItem>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>
+                    <span className="block truncate font-medium text-foreground">{displayName}</span>
+                    <span className="block truncate font-normal">{getRoleLabel(role)}</span>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={signOut} variant="destructive">
+                    <LogOutIcon />
+                    Sign out
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>
