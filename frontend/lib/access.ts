@@ -35,7 +35,7 @@ export function canAccessDashboardPath(role: UserRole, pathname: string) {
 }
 
 export function getRoleLabel(role?: UserRole | null) {
-  if (role === "pharmacist") return "Pharmacy workspace"
-  if (role === "admin") return "Operations workspace"
-  return "Care workspace"
+  if (role === "pharmacist") return "Pharmacy account"
+  if (role === "admin") return "Operations account"
+  return "Patient account"
 }

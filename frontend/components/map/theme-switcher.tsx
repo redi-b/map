@@ -11,6 +11,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
@@ -50,6 +53,34 @@ export function ThemeMenuGroup() {
         )
       })}
     </DropdownMenuGroup>
+  )
+}
+
+export function ThemeSubmenu() {
+  const { currentTheme, setTheme } = useStableTheme()
+  const activeTheme = themes.find((item) => item.value === currentTheme) ?? themes[2]
+  const ActiveIcon = activeTheme.icon
+
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger>
+        <ActiveIcon />
+        Theme
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent className="w-40">
+        {themes.map((item) => {
+          const Icon = item.icon
+
+          return (
+            <DropdownMenuItem key={item.value} onClick={() => setTheme(item.value)}>
+              <Icon />
+              {item.label}
+              {currentTheme === item.value ? <CheckIcon className="ml-auto" /> : null}
+            </DropdownMenuItem>
+          )
+        })}
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
   )
 }
 

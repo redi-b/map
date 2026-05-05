@@ -41,7 +41,7 @@ import {
 import { canAccessDashboardPath, getRoleLabel } from "@/lib/access"
 import { authClient } from "@/lib/auth-client"
 import type { CurrentUser, UserRole } from "@/lib/api"
-import { ThemeMenuGroup } from "./theme-switcher"
+import { ThemeSubmenu } from "./theme-switcher"
 
 const overviewItems = [
   { label: "Dashboard", icon: LayoutDashboardIcon, href: "/dashboard" },
@@ -200,7 +200,9 @@ export function AppSidebar({ currentUser }: { currentUser: CurrentUser }) {
                   </DropdownMenuLabel>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
-                <ThemeMenuGroup />
+                <DropdownMenuGroup>
+                  <ThemeSubmenu />
+                </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
                   <DropdownMenuItem onClick={signOut} variant="destructive">
