@@ -43,6 +43,7 @@ Run database migrations after the database exists:
 
 ```bash
 npm run db:migrate
+npm run db:seed
 ```
 
 ## Development

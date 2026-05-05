@@ -1,39 +1,14 @@
 "use client"
 
 import { FilterIcon, Loader2Icon, MapPinIcon, PackageSearchIcon, SendIcon } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { searchMedicines, type MedicineSearchResult } from "@/lib/api"
 
-const starterResults: MedicineSearchResult[] = [
-  {
-    id: "amoxicillin-lion",
-    medicine: "Amoxicillin Capsules 500mg",
-    category: "Antibiotic",
-    pharmacy: "Lion Pharmacy",
-    neighborhood: "Bole",
-    distanceMeters: 420,
-    priceEtb: 185,
-    stockStatus: "in_stock",
-    deliveryAvailable: true,
-    updatedAt: "24 minutes ago",
-  },
-  {
-    id: "metformin-wudassie",
-    medicine: "Metformin 850mg",
-    category: "Antidiabetic",
-    pharmacy: "Wudassie Pharmacy",
-    neighborhood: "Kazanchis",
-    distanceMeters: 900,
-    priceEtb: 82.5,
-    stockStatus: "low_stock",
-    deliveryAvailable: false,
-    updatedAt: "2 hours ago",
-  },
-]
+const initialSearchQuery = "amoxicillin"
 
 const stockLabels = {
   in_stock: "In stock",
@@ -47,14 +22,36 @@ function formatDistance(distanceMeters: number) {
 }
 
 export function MedicineSearch() {
-  const [query, setQuery] = useState("amoxicillin")
-  const [searchedQuery, setSearchedQuery] = useState("amoxicillin")
-  const [results, setResults] = useState<MedicineSearchResult[]>(starterResults)
+  const [query, setQuery] = useState(initialSearchQuery)
+  const [searchedQuery, setSearchedQuery] = useState(initialSearchQuery)
+  const [results, setResults] = useState<MedicineSearchResult[]>([])
   const [inStockOnly, setInStockOnly] = useState(true)
   const [deliveryOnly, setDeliveryOnly] = useState(false)
   const [underFiveHundred, setUnderFiveHundred] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+
+  useEffect(() => {
+    let isMounted = true
+
+    searchMedicines(initialSearchQuery)
+      .then((response) => {
+        if (!isMounted) return
+        setResults(response.results)
+      })
+      .catch(() => {
+        if (!isMounted) return
+        setError("Search is temporarily unavailable.")
+      })
+      .finally(() => {
+        if (!isMounted) return
+        setLoading(false)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   const filteredResults = useMemo(() => {
     return results.filter((item) => {
@@ -83,7 +80,7 @@ export function MedicineSearch() {
       setResults(response.results)
       setSearchedQuery(trimmedQuery)
     } catch {
-      setError("Search is temporarily unavailable. Showing saved examples for now.")
+      setError("Search is temporarily unavailable.")
     } finally {
       setLoading(false)
     }

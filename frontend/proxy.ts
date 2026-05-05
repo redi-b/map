@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server"
+import { canAccessDashboardPath, getRoleHomePath, isUserRole } from "./lib/access"
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"
 
@@ -22,34 +23,14 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/onboarding", request.url))
   }
 
-  const role = currentUser.profile.role as "patient" | "pharmacist" | "admin"
-  const allowedPaths = {
-    patient: [
-      "/dashboard",
-      "/dashboard/find",
-      "/dashboard/prescriptions",
-      "/dashboard/adherence",
-      "/dashboard/assistant",
-    ],
-    pharmacist: [
-      "/dashboard",
-      "/dashboard/pharmacy/inventory",
-      "/dashboard/pharmacy/requests",
-    ],
-    admin: [
-      "/dashboard",
-      "/dashboard/find",
-      "/dashboard/prescriptions",
-      "/dashboard/adherence",
-      "/dashboard/assistant",
-      "/dashboard/pharmacy/inventory",
-      "/dashboard/pharmacy/requests",
-      "/dashboard/pharmacy/verification",
-    ],
+  const role = currentUser.profile.role
+
+  if (!isUserRole(role)) {
+    return NextResponse.redirect(new URL("/onboarding", request.url))
   }
 
-  if (!allowedPaths[role]?.includes(request.nextUrl.pathname)) {
-    return NextResponse.redirect(new URL("/dashboard", request.url))
+  if (!canAccessDashboardPath(role, request.nextUrl.pathname)) {
+    return NextResponse.redirect(new URL(getRoleHomePath(role), request.url))
   }
 
   return NextResponse.next()

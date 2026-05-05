@@ -1,5 +1,7 @@
 import type { UserRole } from "./api"
 
+export const userRoles = ["patient", "pharmacist", "admin"] as const
+
 export const accessByRole: Record<UserRole, string[]> = {
   patient: [
     "/dashboard",
@@ -18,6 +20,10 @@ export const accessByRole: Record<UserRole, string[]> = {
     "/dashboard/pharmacy/verification",
     "/dashboard/pharmacy/requests",
   ],
+}
+
+export function isUserRole(value: unknown): value is UserRole {
+  return typeof value === "string" && userRoles.includes(value as UserRole)
 }
 
 export const roleHomePath: Record<UserRole, string> = {

@@ -1,9 +1,9 @@
-import { fromNodeHeaders } from "better-auth/node"
 import { eq } from "drizzle-orm"
 import type { FastifyPluginAsync } from "fastify"
 import { db } from "../db/client.js"
 import { profiles, userRole } from "../db/schema.js"
-import { auth } from "../lib/auth.js"
+import { accessAreasByRole, dashboardAccessByRole, roleHomePath } from "../lib/access.js"
+import { getCurrentProfile, getSession, requireProfile } from "../lib/auth-context.js"
 
 const profileBodySchema = {
   type: "object",
@@ -17,19 +17,13 @@ const profileBodySchema = {
 
 export const sessionRoutes: FastifyPluginAsync = async (app) => {
   app.get("/me", async (request, reply) => {
-    const session = await auth.api.getSession({
-      headers: fromNodeHeaders(request.headers),
-    })
+    const session = await getSession(request)
 
     if (!session) {
       return reply.status(401).send({ error: "Unauthorized" })
     }
 
-    const [profile] = await db
-      .select()
-      .from(profiles)
-      .where(eq(profiles.authUserId, session.user.id))
-      .limit(1)
+    const profile = await getCurrentProfile(session.user.id)
 
     return {
       session,
@@ -41,9 +35,7 @@ export const sessionRoutes: FastifyPluginAsync = async (app) => {
     "/profile",
     { schema: { body: profileBodySchema } },
     async (request, reply) => {
-      const session = await auth.api.getSession({
-        headers: fromNodeHeaders(request.headers),
-      })
+      const session = await getSession(request)
 
       if (!session) {
         return reply.status(401).send({ error: "Unauthorized" })
@@ -84,36 +76,17 @@ export const sessionRoutes: FastifyPluginAsync = async (app) => {
   )
 
   app.get("/access", async (request, reply) => {
-    const session = await auth.api.getSession({
-      headers: fromNodeHeaders(request.headers),
-    })
+    const context = await requireProfile(request, reply)
 
-    if (!session) {
-      return reply.status(401).send({ error: "Unauthorized" })
+    if (!context) {
+      return
     }
-
-    const [profile] = await db
-      .select()
-      .from(profiles)
-      .where(eq(profiles.authUserId, session.user.id))
-      .limit(1)
-
-    if (!profile) {
-      return {
-        role: null,
-        areas: [],
-      }
-    }
-
-    const areasByRole = {
-      patient: ["dashboard", "find", "prescriptions", "adherence", "assistant"],
-      pharmacist: ["dashboard", "pharmacy.inventory", "pharmacy.requests"],
-      admin: ["dashboard", "find", "prescriptions", "adherence", "assistant", "pharmacy.inventory", "pharmacy.requests", "pharmacy.verification"],
-    } as const
 
     return {
-      role: profile.role,
-      areas: areasByRole[profile.role],
+      role: context.profile.role,
+      areas: accessAreasByRole[context.profile.role],
+      dashboardPaths: dashboardAccessByRole[context.profile.role],
+      homePath: roleHomePath[context.profile.role],
     }
   })
 }

@@ -33,6 +33,13 @@ export type MedicineSearchResult = {
   updatedAt: string
 }
 
+export type CurrentAccess = {
+  role: UserRole
+  areas: string[]
+  dashboardPaths: string[]
+  homePath: string
+}
+
 export async function searchMedicines(query: string) {
   const params = new URLSearchParams({ q: query })
   const response = await fetch(`${apiBaseUrl}/api/medicines/search?${params}`, {
@@ -47,6 +54,18 @@ export async function searchMedicines(query: string) {
     query: { q: string; neighborhood?: string; inStock?: boolean }
     results: MedicineSearchResult[]
   }>
+}
+
+export async function getCurrentAccess() {
+  const response = await fetch(`${apiBaseUrl}/api/access`, {
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to load access rules")
+  }
+
+  return response.json() as Promise<CurrentAccess>
 }
 
 export async function getCurrentUser() {
