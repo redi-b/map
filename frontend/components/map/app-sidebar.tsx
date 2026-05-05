@@ -9,7 +9,6 @@ import {
   LayoutDashboardIcon,
   LogOutIcon,
   PackageSearchIcon,
-  PillIcon,
   ShieldCheckIcon,
 } from "lucide-react"
 import Link from "next/link"
@@ -38,7 +37,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { canAccessDashboardPath, getRoleLabel } from "@/lib/access"
+import { canAccessDashboardPath, getAccountLabel, getRoleLabel } from "@/lib/access"
 import { authClient } from "@/lib/auth-client"
 import type { CurrentUser, UserRole } from "@/lib/api"
 import { ThemeSubmenu } from "./theme-switcher"
@@ -55,7 +54,7 @@ const patientItems = [
 ]
 
 const pharmacyItems = [
-  { label: "Inventory", icon: PillIcon, href: "/dashboard/pharmacy/inventory" },
+  { label: "Inventory", icon: PackageSearchIcon, href: "/dashboard/pharmacy/inventory" },
   { label: "Requests", icon: BellIcon, href: "/dashboard/pharmacy/requests", badge: "12" },
   { label: "Verification", icon: ShieldCheckIcon, href: "/dashboard/pharmacy/verification" },
 ]
@@ -98,7 +97,7 @@ export function AppSidebar({ currentUser }: { currentUser: CurrentUser }) {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" tooltip="MAP">
               <div className="flex aspect-square size-8 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-                <PillIcon />
+                <ShieldCheckIcon />
               </div>
               <div className="flex min-w-0 flex-col">
                 <span className="truncate font-semibold">MAP</span>
@@ -196,7 +195,7 @@ export function AppSidebar({ currentUser }: { currentUser: CurrentUser }) {
                 <DropdownMenuGroup>
                   <DropdownMenuLabel>
                     <span className="block truncate font-medium text-foreground">{displayName}</span>
-                    <span className="block truncate font-normal">{getRoleLabel(role)}</span>
+                    <span className="block truncate font-normal">{getAccountLabel(role)}</span>
                   </DropdownMenuLabel>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />

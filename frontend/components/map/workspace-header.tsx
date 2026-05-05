@@ -4,14 +4,13 @@ import { BellIcon, SearchIcon } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { buttonVariants } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { canAccessDashboardPath } from "@/lib/access"
 import type { CurrentUser } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 const routeLabels: Record<string, { eyebrow: string; title: string }> = {
-  "/dashboard": { eyebrow: "Bole, Addis Ababa", title: "Care dashboard" },
+  "/dashboard": { eyebrow: "Bole, Addis Ababa", title: "Dashboard" },
   "/dashboard/find": { eyebrow: "Live pharmacy stock", title: "Find medicine" },
   "/dashboard/prescriptions": { eyebrow: "Verification trail", title: "Prescriptions" },
   "/dashboard/adherence": { eyebrow: "Dose schedule", title: "Adherence" },
@@ -30,15 +29,14 @@ export function WorkspaceHeader({ currentUser }: { currentUser: CurrentUser }) {
     : "/dashboard/pharmacy/inventory"
   const notificationHref = canAccessDashboardPath(role, "/dashboard/pharmacy/requests")
     ? "/dashboard/pharmacy/requests"
-    : "/dashboard/prescriptions"
+    : "/dashboard/adherence"
 
   return (
     <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
       <div className="flex min-h-16 items-center justify-between gap-4 px-4 md:px-6">
-        <div className="flex min-w-0 items-center gap-3">
-          <SidebarTrigger />
-          <Separator orientation="vertical" className="h-6" />
-          <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-4">
+          <SidebarTrigger className="shrink-0" />
+          <div className="min-w-0 border-l pl-4">
             <p className="truncate text-sm text-muted-foreground">{labels.eyebrow}</p>
             <h1 className="truncate font-[var(--font-display)] text-xl font-semibold">
               {labels.title}
@@ -56,7 +54,7 @@ export function WorkspaceHeader({ currentUser }: { currentUser: CurrentUser }) {
           <Link
             className={cn(buttonVariants({ variant: "outline", size: "icon" }), "rounded-full")}
             href={notificationHref}
-            aria-label="Notifications"
+            aria-label="Open reminders"
           >
             <BellIcon />
           </Link>

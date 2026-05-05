@@ -74,7 +74,7 @@
   --chart-foreground: var(--foreground);
   --chart-foreground-muted: var(--muted-foreground);
   --chart-label: var(--muted-foreground);
-  --chart-ring-background: oklch(0.88 0.022 158 / 0.48);
+  --chart-ring-background: oklch(0.9 0.014 158 / 0.32);
   --sidebar: oklch(0.965 0.014 158);
   --sidebar-foreground: oklch(0.2 0.022 158);
   --sidebar-primary: oklch(0.62 0.17 151);
