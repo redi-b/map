@@ -1,7 +1,8 @@
+"use client"
+
 import { ShieldCheckIcon } from "lucide-react"
 import Link from "next/link"
-import { buttonVariants } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { LandingAuthActions } from "./landing-auth-actions"
 import { ThemeSwitcher } from "./theme-switcher"
 
 export function PublicNav() {
@@ -20,12 +21,7 @@ export function PublicNav() {
           <Link className="transition hover:text-foreground" href="/#for-pharmacies">For pharmacies</Link>
         </nav>
         <div className="flex items-center gap-2">
-          <Link className={cn(buttonVariants({ variant: "ghost" }), "hidden sm:inline-flex")} href="/login">
-            Sign in
-          </Link>
-          <Link className={buttonVariants()} href="/register">
-            Create account
-          </Link>
+          <LandingAuthActions />
           <ThemeSwitcher />
         </div>
       </div>

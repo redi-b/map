@@ -1,12 +1,14 @@
 "use client"
 
+import { BellIcon, SearchIcon } from "lucide-react"
+import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { buttonVariants } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
-import { getRoleLabel } from "@/lib/access"
+import { canAccessDashboardPath } from "@/lib/access"
 import type { CurrentUser } from "@/lib/api"
-import { ThemeSwitcher } from "./theme-switcher"
+import { cn } from "@/lib/utils"
 
 const routeLabels: Record<string, { eyebrow: string; title: string }> = {
   "/dashboard": { eyebrow: "Bole, Addis Ababa", title: "Care dashboard" },
@@ -19,22 +21,16 @@ const routeLabels: Record<string, { eyebrow: string; title: string }> = {
   "/dashboard/pharmacy/verification": { eyebrow: "Operations review", title: "Verification" },
 }
 
-function getInitials(name?: string | null, email?: string) {
-  const source = name?.trim() || email || "MAP"
-  return source
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase()
-}
-
 export function WorkspaceHeader({ currentUser }: { currentUser: CurrentUser }) {
   const pathname = usePathname()
   const labels = routeLabels[pathname] ?? routeLabels["/dashboard"]
-  const profile = currentUser.profile
-  const displayName = profile?.fullName || currentUser.session.user.name || currentUser.session.user.email
-  const initials = getInitials(displayName, currentUser.session.user.email)
+  const role = currentUser.profile?.role ?? "patient"
+  const searchHref = canAccessDashboardPath(role, "/dashboard/find")
+    ? "/dashboard/find"
+    : "/dashboard/pharmacy/inventory"
+  const notificationHref = canAccessDashboardPath(role, "/dashboard/pharmacy/requests")
+    ? "/dashboard/pharmacy/requests"
+    : "/dashboard/prescriptions"
 
   return (
     <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
@@ -49,17 +45,21 @@ export function WorkspaceHeader({ currentUser }: { currentUser: CurrentUser }) {
             </h1>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <ThemeSwitcher />
-          <div className="hidden min-w-0 flex-col items-end md:flex">
-            <span className="max-w-44 truncate text-sm font-medium">{displayName}</span>
-            <span className="text-xs text-muted-foreground">
-              {getRoleLabel(profile?.role)}
-            </span>
-          </div>
-          <Avatar className="size-9 rounded-md">
-            <AvatarFallback className="rounded-md">{initials}</AvatarFallback>
-          </Avatar>
+        <div className="flex items-center gap-2">
+          <Link
+            className={cn(buttonVariants({ variant: "outline", size: "icon" }), "rounded-full")}
+            href={searchHref}
+            aria-label="Search"
+          >
+            <SearchIcon />
+          </Link>
+          <Link
+            className={cn(buttonVariants({ variant: "outline", size: "icon" }), "rounded-full")}
+            href={notificationHref}
+            aria-label="Notifications"
+          >
+            <BellIcon />
+          </Link>
         </div>
       </div>
     </header>

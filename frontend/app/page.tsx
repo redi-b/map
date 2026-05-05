@@ -11,6 +11,7 @@ import {
   UserRoundIcon,
 } from "lucide-react"
 import Link from "next/link"
+import { LandingAuthActions } from "@/components/map/landing-auth-actions"
 import { PublicNav } from "@/components/map/public-nav"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
@@ -237,8 +238,7 @@ export default function LandingPage() {
             Create an account to save requests, track replies, and keep reminders connected to your care.
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Link className={buttonVariants()} href="/register">Create account</Link>
-            <Link className={cn(buttonVariants({ variant: "outline" }), "bg-card")} href="/login">Sign in</Link>
+            <LandingAuthActions placement="section" />
           </div>
         </div>
       </section>
