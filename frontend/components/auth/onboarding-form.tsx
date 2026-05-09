@@ -1,26 +1,21 @@
 "use client"
 
-import { Loader2Icon } from "lucide-react"
+import { CheckCircle2Icon, Loader2Icon, ShieldCheckIcon, UserRoundIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { getCurrentUser, saveProfile, type UserRole } from "@/lib/api"
+import { getCurrentUser, saveProfile } from "@/lib/api"
 import { getRoleHomePath } from "@/lib/access"
 import { cn } from "@/lib/utils"
-
-const roles: Array<{ value: UserRole; label: string; description: string }> = [
-  { value: "patient", label: "Patient or caregiver", description: "Search medicine, upload prescriptions, and manage reminders." },
-  { value: "pharmacist", label: "Pharmacy", description: "Manage availability and respond to prescription requests." },
-]
 
 export function OnboardingForm() {
   const router = useRouter()
   const [fullName, setFullName] = useState("")
   const [phone, setPhone] = useState("")
-  const [role, setRole] = useState<UserRole>("patient")
   const [error, setError] = useState("")
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -57,12 +52,24 @@ export function OnboardingForm() {
     event.preventDefault()
     setSaving(true)
     setError("")
+    setFieldErrors({})
 
     try {
-      await saveProfile({ fullName, phone, role })
-      router.replace(getRoleHomePath(role))
-    } catch {
-      setError("Unable to save profile")
+      await saveProfile({ fullName, phone, role: "patient" })
+      router.replace(getRoleHomePath("patient"))
+    } catch (err) {
+      if (err instanceof Error && err.message.includes("details")) {
+        try {
+          const parsed = JSON.parse(err.message)
+          if (parsed.details) {
+            setFieldErrors(parsed.details)
+            return
+          }
+        } catch {
+          // Not a structured error — fall through
+        }
+      }
+      setError("Unable to save profile. Please try again.")
     } finally {
       setSaving(false)
     }
@@ -78,45 +85,90 @@ export function OnboardingForm() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Set up your MAP account</CardTitle>
-        <CardDescription>Choose how you plan to use MAP.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form className="flex flex-col gap-5" onSubmit={onSubmit}>
-          <label className="flex flex-col gap-2 text-sm font-medium">
-            Full name
-            <Input value={fullName} onChange={(event) => setFullName(event.target.value)} required />
-          </label>
-          <label className="flex flex-col gap-2 text-sm font-medium">
-            Phone
-            <Input value={phone} onChange={(event) => setPhone(event.target.value)} />
-          </label>
-          <div className="grid gap-3 md:grid-cols-2">
-            {roles.map((item) => (
-              <button
-                key={item.value}
-                type="button"
-                className={cn(
-                  "rounded-lg border bg-card p-4 text-left transition hover:bg-accent",
-                  role === item.value && "border-primary bg-secondary"
-                )}
-                onClick={() => setRole(item.value)}
-              >
-                <span className="font-semibold">{item.label}</span>
-                <span className="mt-2 block text-sm text-muted-foreground">{item.description}</span>
-              </button>
-            ))}
-          </div>
-          <p className="text-sm text-muted-foreground">MAP staff access is assigned separately.</p>
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
-          <Button type="submit" disabled={saving}>
-            {saving ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
-            Continue
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+    <div className="mx-auto max-w-2xl space-y-6">
+      <div className="text-center">
+        <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
+          <ShieldCheckIcon className="size-6" />
+        </div>
+        <h1 className="font-[var(--font-display)] text-3xl font-semibold">
+          Welcome to MAP
+        </h1>
+        <p className="mt-2 text-muted-foreground">
+          Complete your profile to start searching medicines and managing prescriptions.
+        </p>
+      </div>
+
+      <Card className="border-border/70 shadow-sm">
+        <CardHeader>
+          <CardTitle>Your details</CardTitle>
+          <CardDescription>
+            This information helps pharmacies identify you when processing requests.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form className="flex flex-col gap-5" onSubmit={onSubmit}>
+            <label className="flex flex-col gap-2 text-sm font-medium">
+              Full name
+              <Input
+                value={fullName}
+                onChange={(event) => setFullName(event.target.value)}
+                autoComplete="name"
+                placeholder="Your full name"
+                required
+                minLength={2}
+              />
+              {fieldErrors.fullName ? (
+                <p className="text-xs text-destructive">{fieldErrors.fullName[0]}</p>
+              ) : null}
+            </label>
+
+            <label className="flex flex-col gap-2 text-sm font-medium">
+              Phone number
+              <Input
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+                type="tel"
+                autoComplete="tel"
+                placeholder="+251XXXXXXXXX"
+              />
+              <p className="text-xs text-muted-foreground">
+                Ethiopian format (+251...). Used for prescription follow-ups.
+              </p>
+              {fieldErrors.phone ? (
+                <p className="text-xs text-destructive">{fieldErrors.phone[0]}</p>
+              ) : null}
+            </label>
+
+            <div className="rounded-lg border bg-secondary/50 p-4">
+              <div className="flex items-center gap-3">
+                <UserRoundIcon className="size-5 text-primary" />
+                <div>
+                  <p className="font-medium">Patient account</p>
+                  <p className="text-sm text-muted-foreground">
+                    Search medicines, upload prescriptions, and manage reminders.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <p className="flex items-start gap-2 text-sm text-muted-foreground">
+              <CheckCircle2Icon className="mt-0.5 size-4 shrink-0 text-primary" />
+              Pharmacy and administrator accounts are set up by MAP operations staff.
+            </p>
+
+            {error ? (
+              <p className="rounded-md border border-destructive/25 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {error}
+              </p>
+            ) : null}
+
+            <Button type="submit" size="lg" disabled={saving}>
+              {saving ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
+              Complete setup
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   )
 }

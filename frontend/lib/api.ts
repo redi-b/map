@@ -40,8 +40,27 @@ export type CurrentAccess = {
   homePath: string
 }
 
-export async function searchMedicines(query: string) {
-  const params = new URLSearchParams({ q: query })
+export type SearchFilters = {
+  q: string
+  neighborhood?: string
+  inStock?: boolean
+  delivery?: boolean
+  maxPrice?: number
+}
+
+export async function searchMedicines(filters: SearchFilters | string) {
+  const params = new URLSearchParams()
+
+  if (typeof filters === "string") {
+    params.set("q", filters)
+  } else {
+    params.set("q", filters.q)
+    if (filters.neighborhood) params.set("neighborhood", filters.neighborhood)
+    if (filters.inStock) params.set("inStock", "true")
+    if (filters.delivery) params.set("delivery", "true")
+    if (filters.maxPrice) params.set("maxPrice", String(filters.maxPrice))
+  }
+
   const response = await fetch(`${apiBaseUrl}/api/medicines/search?${params}`, {
     credentials: "include",
   })
@@ -54,6 +73,18 @@ export async function searchMedicines(query: string) {
     query: { q: string; neighborhood?: string; inStock?: boolean }
     results: MedicineSearchResult[]
   }>
+}
+
+export async function getNeighborhoods() {
+  const response = await fetch(`${apiBaseUrl}/api/medicines/neighborhoods`, {
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to load neighborhoods")
+  }
+
+  return response.json() as Promise<{ neighborhoods: string[] }>
 }
 
 export async function getCurrentAccess() {
@@ -97,6 +128,14 @@ export async function saveProfile(input: {
   })
 
   if (!response.ok) {
+    const body = await response.json().catch(() => null)
+
+    if (body?.details) {
+      const err = new Error(JSON.stringify(body))
+      err.message = JSON.stringify(body)
+      throw err
+    }
+
     throw new Error("Unable to save profile")
   }
 
