@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 
 const routeLabels: Record<string, { eyebrow: string; title: string }> = {
   "/dashboard": { eyebrow: "Bole, Addis Ababa", title: "Dashboard" },
-  "/dashboard/find": { eyebrow: "Live pharmacy stock", title: "Find medicine" },
+  "/dashboard/find": { eyebrow: "Pharmacy stock search", title: "Find medicine" },
   "/dashboard/prescriptions": { eyebrow: "Verification trail", title: "Prescriptions" },
   "/dashboard/adherence": { eyebrow: "Dose schedule", title: "Adherence" },
   "/dashboard/assistant": { eyebrow: "Medication guidance", title: "Medication guide" },

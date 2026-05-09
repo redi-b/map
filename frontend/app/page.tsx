@@ -1,10 +1,12 @@
 import {
   ArrowRightIcon,
   BellIcon,
+  BotIcon,
   Building2Icon,
   CheckCircle2Icon,
   ClipboardCheckIcon,
   Clock3Icon,
+  HeartPulseIcon,
   MapPinIcon,
   PackageSearchIcon,
   ShieldCheckIcon,
@@ -40,12 +42,14 @@ const patientBenefits = [
   "Search before leaving home",
   "Save prescriptions and request updates",
   "Set dose and refill reminders",
+  "AI-assisted medicine information",
 ]
 
 const pharmacyBenefits = [
   "Keep high-demand stock visible",
   "Receive prescription requests in one place",
   "Suggest alternatives when stock is low",
+  "Manage inventory with batch updates",
 ]
 
 const audiences = [
@@ -71,11 +75,28 @@ const workflow = [
   ["Collect", "Track the reply, confirm pickup or delivery, and keep reminders close."],
 ]
 
+const stats = [
+  { value: "4+", label: "Verified pharmacies", sublabel: "across Addis Ababa" },
+  { value: "8+", label: "Medicines indexed", sublabel: "and growing" },
+  { value: "<2min", label: "First search", sublabel: "for new users" },
+  { value: "24/7", label: "Available", sublabel: "search & reminders" },
+]
+
+const capabilities = [
+  { icon: PackageSearchIcon, title: "Medicine search", description: "Real-time inventory from verified pharmacies across multiple neighborhoods." },
+  { icon: ClipboardCheckIcon, title: "Prescription workflow", description: "Upload, review, approve, or request resubmission — all tracked and auditable." },
+  { icon: BellIcon, title: "Adherence tracking", description: "Dose-by-dose schedules with taken/skipped logging and refill alerts." },
+  { icon: BotIcon, title: "AI health assistant", description: "Informational medicine guidance with mandatory medical disclaimers." },
+  { icon: HeartPulseIcon, title: "Care coordination", description: "Availability requests, delivery options, and proxy pickup for caregivers." },
+  { icon: ShieldCheckIcon, title: "Verified pharmacies", description: "Only admin-registered and verified pharmacies appear in search results." },
+]
+
 export default function LandingPage() {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <PublicNav />
 
+      {/* Hero */}
       <section className="mx-auto grid max-w-7xl gap-10 px-5 py-12 lg:grid-cols-[0.95fr_1.05fr] lg:py-16">
         <div className="flex flex-col justify-center gap-6">
           <Badge variant="secondary" className="w-fit">Addis Ababa medicine access</Badge>
@@ -101,13 +122,18 @@ export default function LandingPage() {
         <div className="rounded-lg border bg-card p-4 shadow-sm">
           <div className="grid gap-4">
             <div className="rounded-lg bg-secondary p-5">
-              <p className="text-sm text-muted-foreground">Live stock request</p>
+              <p className="text-sm text-muted-foreground">Sample pharmacy search</p>
               <h2 className="mt-2 font-[var(--font-display)] text-3xl font-semibold">Amoxicillin 500mg</h2>
               <div className="mt-5 grid gap-3">
-                {["Lion Pharmacy, Bole", "Wudassie Pharmacy, Kazanchis", "HealthPlus, Piazza"].map((item, index) => (
-                  <div key={item} className="flex items-center justify-between rounded-lg bg-background p-3">
-                    <span>{item}</span>
-                    <Badge variant={index === 1 ? "secondary" : "default"}>{index === 1 ? "Low" : "In stock"}</Badge>
+                {[
+                  { name: "Lion Pharmacy, Bole", status: "In stock", variant: "default" as const },
+                  { name: "Wudassie Pharmacy, Kazanchis", status: "Low", variant: "secondary" as const },
+                  { name: "HealthPlus, Piazza", status: "In stock", variant: "default" as const },
+                  { name: "Red Cross, Megenagna", status: "In stock", variant: "default" as const },
+                ].map((item) => (
+                  <div key={item.name} className="flex items-center justify-between rounded-lg bg-background p-3">
+                    <span>{item.name}</span>
+                    <Badge variant={item.variant}>{item.status}</Badge>
                   </div>
                 ))}
               </div>
@@ -129,7 +155,21 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="how-it-works" className="border-y bg-card">
+      {/* Stats */}
+      <section className="border-y bg-card">
+        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-4 px-5 py-10 md:grid-cols-4">
+          {stats.map((stat) => (
+            <div key={stat.label} className="text-center">
+              <p className="font-[var(--font-display)] text-4xl font-semibold text-primary">{stat.value}</p>
+              <p className="mt-1 font-medium">{stat.label}</p>
+              <p className="text-sm text-muted-foreground">{stat.sublabel}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section id="how-it-works" className="scroll-mt-20">
         <div className="mx-auto grid max-w-7xl gap-8 px-5 py-16 lg:grid-cols-[0.35fr_0.65fr]">
           <div>
             <Badge variant="secondary">How it works</Badge>
@@ -151,6 +191,32 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Capabilities */}
+      <section id="capabilities" className="border-y bg-card scroll-mt-20">
+        <div className="mx-auto max-w-7xl px-5 py-16">
+          <div className="mb-10 max-w-2xl">
+            <Badge variant="secondary">Platform capabilities</Badge>
+            <h2 className="mt-4 font-[var(--font-display)] text-4xl font-semibold">
+              Everything patients and pharmacies need in one place.
+            </h2>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {capabilities.map((cap) => (
+              <Card key={cap.title}>
+                <CardHeader>
+                  <cap.icon className="text-primary" />
+                  <CardTitle className="text-lg">{cap.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>{cap.description}</CardDescription>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Why MAP */}
       <section className="mx-auto max-w-7xl px-5 py-16">
         <div className="grid gap-5 md:grid-cols-[0.8fr_1.2fr]">
           <div className="rounded-lg border bg-secondary p-6">
@@ -180,7 +246,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="border-y bg-card">
+      {/* Audiences */}
+      <section id="who-its-for" className="border-y bg-card scroll-mt-20">
         <div className="mx-auto grid max-w-7xl gap-4 px-5 py-16 md:grid-cols-2">
           {audiences.map((audience) => (
             <Card id={audience.id} key={audience.title}>
@@ -204,7 +271,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="trust" className="bg-secondary">
+      {/* Trust */}
+      <section id="trust" className="bg-secondary scroll-mt-20">
         <div className="mx-auto grid max-w-7xl gap-8 px-5 py-16 lg:grid-cols-2">
           <div>
             <Badge variant="outline">Trust and privacy</Badge>
@@ -230,6 +298,7 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* CTA */}
       <section className="mx-auto max-w-7xl px-5 py-16">
         <div className="rounded-lg border bg-card p-8 md:p-12">
           <Badge variant="secondary">Ready when you need it</Badge>
@@ -242,6 +311,27 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="border-t bg-card">
+        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-10 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-3">
+            <span className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <ShieldCheckIcon className="size-4" />
+            </span>
+            <span className="font-[var(--font-display)] font-semibold">MAP</span>
+          </div>
+          <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
+            <Link className="transition hover:text-foreground" href="/#how-it-works">How it works</Link>
+            <Link className="transition hover:text-foreground" href="/#capabilities">Capabilities</Link>
+            <Link className="transition hover:text-foreground" href="/#who-its-for">Who it&apos;s for</Link>
+            <Link className="transition hover:text-foreground" href="/#trust">Trust</Link>
+          </nav>
+          <p className="text-sm text-muted-foreground">
+            &copy; {new Date().getFullYear()} Medicine Access Platform. AAU Computer Science.
+          </p>
+        </div>
+      </footer>
     </main>
   )
 }

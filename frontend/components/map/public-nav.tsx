@@ -17,8 +17,9 @@ export function PublicNav() {
         </Link>
         <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
           <Link className="transition hover:text-foreground" href="/#how-it-works">How it works</Link>
-          <Link className="transition hover:text-foreground" href="/#for-patients">For patients</Link>
-          <Link className="transition hover:text-foreground" href="/#for-pharmacies">For pharmacies</Link>
+          <Link className="transition hover:text-foreground" href="/#capabilities">Capabilities</Link>
+          <Link className="transition hover:text-foreground" href="/#who-its-for">Who it&apos;s for</Link>
+          <Link className="transition hover:text-foreground" href="/#trust">Trust</Link>
         </nav>
         <div className="flex items-center gap-2">
           <LandingAuthActions />
