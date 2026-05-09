@@ -1,7 +1,16 @@
 import "dotenv/config"
 import { db, pool } from "./client.js"
-import { inventoryItems, medicines, pharmacies } from "./schema.js"
+import { inventoryItems, medicines, pharmacies, profiles, user, account } from "./schema.js"
+import { auth } from "../lib/auth.js"
 
+// ─── Admin seed user ─────────────────────────────────────────────────────────
+// This guarantees at least one admin exists in the system.
+// In production, the first admin should be created via a secure bootstrap script.
+const ADMIN_EMAIL = "admin@map.local"
+const ADMIN_PASSWORD = "mapAdmin2026!"
+const ADMIN_NAME = "MAP Administrator"
+
+// ─── Pharmacy seed data ──────────────────────────────────────────────────────
 const pharmacyRows = [
   {
     id: "11111111-1111-4111-8111-111111111111",
@@ -40,7 +49,20 @@ const pharmacyRows = [
     email: "piazza@healthplus.example",
     latitude: "9.0357000",
     longitude: "38.7513000",
-    isVerified: false,
+    isVerified: true,
+  },
+  {
+    id: "44444444-4444-4444-8444-444444444444",
+    name: "Red Cross Pharmacy",
+    branchName: "Megenagna",
+    licenseNumber: "AA-PH-1004",
+    address: "Megenagna, Addis Ababa",
+    neighborhood: "Megenagna",
+    phone: "+251911000404",
+    email: "megenagna@redcross.example",
+    latitude: "9.0121000",
+    longitude: "38.8012000",
+    isVerified: true,
   },
 ]
 
@@ -77,6 +99,38 @@ const medicineRows = [
     category: "Antihypertensive",
     manufacturer: "Sun Pharma",
   },
+  {
+    id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+    name: "Paracetamol",
+    form: "Tablet",
+    strength: "500mg",
+    category: "Analgesic",
+    manufacturer: "EPHARM",
+  },
+  {
+    id: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+    name: "Omeprazole",
+    form: "Capsule",
+    strength: "20mg",
+    category: "Gastrointestinal",
+    manufacturer: "Cadila",
+  },
+  {
+    id: "11111111-aaaa-4bbb-8ccc-dddddddddddd",
+    name: "Atorvastatin",
+    form: "Tablet",
+    strength: "20mg",
+    category: "Cardiovascular",
+    manufacturer: "Pfizer",
+  },
+  {
+    id: "22222222-aaaa-4bbb-8ccc-dddddddddddd",
+    name: "Ciprofloxacin",
+    form: "Tablet",
+    strength: "500mg",
+    category: "Antibiotic",
+    manufacturer: "Bayer",
+  },
 ]
 
 const inventoryRows = [
@@ -102,10 +156,10 @@ const inventoryRows = [
     id: "90000000-0000-4000-8000-000000000003",
     pharmacyId: pharmacyRows[2].id,
     medicineId: medicineRows[2].id,
-    quantity: 0,
+    quantity: 25,
     unitPriceEtb: "455.00",
-    stockStatus: "out_of_stock" as const,
-    expiresAt: null,
+    stockStatus: "in_stock" as const,
+    expiresAt: new Date("2027-09-01T00:00:00.000Z"),
   },
   {
     id: "90000000-0000-4000-8000-000000000004",
@@ -116,9 +170,122 @@ const inventoryRows = [
     stockStatus: "in_stock" as const,
     expiresAt: new Date("2026-12-01T00:00:00.000Z"),
   },
+  {
+    id: "90000000-0000-4000-8000-000000000005",
+    pharmacyId: pharmacyRows[1].id,
+    medicineId: medicineRows[4].id,
+    quantity: 200,
+    unitPriceEtb: "12.00",
+    stockStatus: "in_stock" as const,
+    expiresAt: new Date("2028-01-01T00:00:00.000Z"),
+  },
+  {
+    id: "90000000-0000-4000-8000-000000000006",
+    pharmacyId: pharmacyRows[2].id,
+    medicineId: medicineRows[5].id,
+    quantity: 85,
+    unitPriceEtb: "210.00",
+    stockStatus: "in_stock" as const,
+    expiresAt: new Date("2027-06-01T00:00:00.000Z"),
+  },
+  {
+    id: "90000000-0000-4000-8000-000000000007",
+    pharmacyId: pharmacyRows[3].id,
+    medicineId: medicineRows[0].id,
+    quantity: 60,
+    unitPriceEtb: "175.00",
+    stockStatus: "in_stock" as const,
+    expiresAt: new Date("2027-08-15T00:00:00.000Z"),
+  },
+  {
+    id: "90000000-0000-4000-8000-000000000008",
+    pharmacyId: pharmacyRows[3].id,
+    medicineId: medicineRows[6].id,
+    quantity: 5,
+    unitPriceEtb: "320.00",
+    stockStatus: "low_stock" as const,
+    expiresAt: new Date("2027-02-01T00:00:00.000Z"),
+  },
+  {
+    id: "90000000-0000-4000-8000-000000000009",
+    pharmacyId: pharmacyRows[0].id,
+    medicineId: medicineRows[7].id,
+    quantity: 30,
+    unitPriceEtb: "145.00",
+    stockStatus: "in_stock" as const,
+    expiresAt: new Date("2027-04-01T00:00:00.000Z"),
+  },
+  {
+    id: "90000000-0000-4000-8000-000000000010",
+    pharmacyId: pharmacyRows[2].id,
+    medicineId: medicineRows[4].id,
+    quantity: 0,
+    unitPriceEtb: "15.00",
+    stockStatus: "out_of_stock" as const,
+    expiresAt: null,
+  },
 ]
 
+async function seedAdmin() {
+  // Use Better Auth's API to create the admin user so password hashing is handled
+  try {
+    await auth.api.signUpEmail({
+      body: {
+        name: ADMIN_NAME,
+        email: ADMIN_EMAIL,
+        password: ADMIN_PASSWORD,
+      },
+    })
+    console.log(`  Created auth user: ${ADMIN_EMAIL}`)
+  } catch {
+    // User likely already exists — that's fine
+    console.log(`  Auth user already exists: ${ADMIN_EMAIL}`)
+  }
+
+  // Find the auth user to get the ID
+  const { eq } = await import("drizzle-orm")
+  const [authUser] = await db
+    .select()
+    .from(user)
+    .where(eq(user.email, ADMIN_EMAIL))
+    .limit(1)
+
+  if (!authUser) {
+    console.error("  ⚠ Could not find admin auth user after creation")
+    return
+  }
+
+  // Upsert admin profile
+  await db
+    .insert(profiles)
+    .values({
+      authUserId: authUser.id,
+      fullName: ADMIN_NAME,
+      phone: "+251900000000",
+      role: "admin",
+      isActive: true,
+    })
+    .onConflictDoUpdate({
+      target: profiles.authUserId,
+      set: {
+        fullName: ADMIN_NAME,
+        role: "admin",
+        isActive: true,
+      },
+    })
+
+  console.log(`  Admin profile set for: ${ADMIN_EMAIL}`)
+}
+
 async function seed() {
+  console.log("Seeding MAP development data...")
+
+  // Seed admin user
+  console.log("\n1. Admin user")
+  await seedAdmin()
+
+  // Seed pharmacies
+  console.log("\n2. Pharmacies")
   for (const pharmacy of pharmacyRows) {
     await db
       .insert(pharmacies)
@@ -139,7 +306,10 @@ async function seed() {
         },
       })
   }
+  console.log(`  ${pharmacyRows.length} pharmacies upserted`)
 
+  // Seed medicines
+  console.log("\n3. Medicines")
   for (const medicine of medicineRows) {
     await db
       .insert(medicines)
@@ -155,7 +325,10 @@ async function seed() {
         },
       })
   }
+  console.log(`  ${medicineRows.length} medicines upserted`)
 
+  // Seed inventory
+  console.log("\n4. Inventory")
   for (const inventoryItem of inventoryRows) {
     await db
       .insert(inventoryItems)
@@ -173,11 +346,16 @@ async function seed() {
         },
       })
   }
+  console.log(`  ${inventoryRows.length} inventory items upserted`)
+
+  console.log("\n✓ Seed complete.\n")
+  console.log("Admin login:")
+  console.log(`  Email:    ${ADMIN_EMAIL}`)
+  console.log(`  Password: ${ADMIN_PASSWORD}`)
 }
 
 seed()
   .then(async () => {
-    console.log("Seeded MAP development data.")
     await pool.end()
   })
   .catch(async (error) => {
