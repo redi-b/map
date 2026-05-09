@@ -11,6 +11,18 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
+    autoSignIn: true,
+    minPasswordLength: 8,
+    maxPasswordLength: 128,
+  },
+  rateLimit: {
+    window: 60,
+    max: 10,
+  },
+  account: {
+    accountLinking: {
+      enabled: false,
+    },
   },
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL,
