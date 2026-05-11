@@ -1,8 +1,9 @@
 "use client"
 
-import { BellIcon, SearchIcon } from "lucide-react"
+import { SearchIcon } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { NotificationBell } from "@/components/map/notification-bell"
 import { buttonVariants } from "@/components/ui/button"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { canAccessDashboardPath } from "@/lib/access"
@@ -27,9 +28,6 @@ export function WorkspaceHeader({ currentUser }: { currentUser: CurrentUser }) {
   const searchHref = canAccessDashboardPath(role, "/dashboard/find")
     ? "/dashboard/find"
     : "/dashboard/pharmacy/inventory"
-  const notificationHref = canAccessDashboardPath(role, "/dashboard/pharmacy/requests")
-    ? "/dashboard/pharmacy/requests"
-    : "/dashboard/adherence"
 
   return (
     <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
@@ -51,13 +49,7 @@ export function WorkspaceHeader({ currentUser }: { currentUser: CurrentUser }) {
           >
             <SearchIcon />
           </Link>
-          <Link
-            className={cn(buttonVariants({ variant: "outline", size: "icon" }), "rounded-full")}
-            href={notificationHref}
-            aria-label="Open reminders"
-          >
-            <BellIcon />
-          </Link>
+          <NotificationBell />
         </div>
       </div>
     </header>
