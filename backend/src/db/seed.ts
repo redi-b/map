@@ -1,6 +1,7 @@
 import "dotenv/config"
+import { and, eq, isNull } from "drizzle-orm"
 import { db, pool } from "./client.js"
-import { inventoryItems, medicines, pharmacies, profiles, user, account } from "./schema.js"
+import { inventoryItems, medicines, pharmacies, pharmacyStaff, profiles, user } from "./schema.js"
 import { auth } from "../lib/auth.js"
 
 // ─── Admin seed user ─────────────────────────────────────────────────────────
@@ -242,8 +243,6 @@ async function seedAdmin() {
     console.log(`  Auth user already exists: ${ADMIN_EMAIL}`)
   }
 
-  // Find the auth user to get the ID
-  const { eq } = await import("drizzle-orm")
   const [authUser] = await db
     .select()
     .from(user)
@@ -277,6 +276,42 @@ async function seedAdmin() {
   console.log(`  Admin profile set for: ${ADMIN_EMAIL}`)
 }
 
+async function seedPharmacyStaff() {
+  const pharmacistProfiles = await db
+    .select({ id: profiles.id, fullName: profiles.fullName })
+    .from(profiles)
+    .where(eq(profiles.role, "pharmacist"))
+
+  if (!pharmacistProfiles.length) {
+    console.log("  No pharmacist profiles found to link")
+    return
+  }
+
+  for (const profile of pharmacistProfiles) {
+    const [existingStaff] = await db
+      .select({ id: pharmacyStaff.id })
+      .from(pharmacyStaff)
+      .where(eq(pharmacyStaff.profileId, profile.id))
+      .limit(1)
+
+    if (existingStaff) continue
+
+    const pharmacy = pharmacyRows[0]
+    await db.insert(pharmacyStaff).values({
+      pharmacyId: pharmacy.id,
+      profileId: profile.id,
+      roleInPharmacy: "pharmacist",
+    })
+
+    await db
+      .update(pharmacies)
+      .set({ ownerProfileId: profile.id })
+      .where(and(eq(pharmacies.id, pharmacy.id), isNull(pharmacies.ownerProfileId)))
+
+    console.log(`  Linked ${profile.fullName} to ${pharmacy.name}`)
+  }
+}
+
 async function seed() {
   console.log("Seeding MAP development data...")
 
@@ -308,8 +343,12 @@ async function seed() {
   }
   console.log(`  ${pharmacyRows.length} pharmacies upserted`)
 
+  // Link any local pharmacist profiles to the primary seed pharmacy.
+  console.log("\n3. Pharmacy staff")
+  await seedPharmacyStaff()
+
   // Seed medicines
-  console.log("\n3. Medicines")
+  console.log("\n4. Medicines")
   for (const medicine of medicineRows) {
     await db
       .insert(medicines)
@@ -328,7 +367,7 @@ async function seed() {
   console.log(`  ${medicineRows.length} medicines upserted`)
 
   // Seed inventory
-  console.log("\n4. Inventory")
+  console.log("\n5. Inventory")
   for (const inventoryItem of inventoryRows) {
     await db
       .insert(inventoryItems)
