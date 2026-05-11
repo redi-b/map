@@ -65,6 +65,21 @@ export type TodayAdherence = {
   }
 }
 
+export type AssistantMessage = {
+  id: string
+  sender: "user" | "assistant"
+  content: string
+  hasDisclaimer: boolean
+  timestamp: string
+}
+
+export type AssistantSession = {
+  id: string
+  title: string
+  createdAt: string
+  messages: AssistantMessage[]
+}
+
 export type SearchFilters = {
   q: string
   neighborhood?: string
@@ -184,6 +199,59 @@ export async function resetTodayAdherence() {
   }
 
   return response.json() as Promise<{ resetCount: number }>
+}
+
+export async function listAssistantSessions() {
+  const response = await fetch(`${apiBaseUrl}/api/assistant/sessions`, {
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to load conversations")
+  }
+
+  return response.json() as Promise<{ sessions: AssistantSession[] }>
+}
+
+export async function createAssistantSession() {
+  const response = await fetch(`${apiBaseUrl}/api/assistant/sessions`, {
+    method: "POST",
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to create conversation")
+  }
+
+  return response.json() as Promise<AssistantSession>
+}
+
+export async function sendAssistantMessage(sessionId: string, content: string) {
+  const response = await fetch(`${apiBaseUrl}/api/assistant/sessions/${sessionId}/messages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ content }),
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to send message")
+  }
+
+  return response.json() as Promise<AssistantSession>
+}
+
+export async function deleteAssistantSession(sessionId: string) {
+  const response = await fetch(`${apiBaseUrl}/api/assistant/sessions/${sessionId}`, {
+    method: "DELETE",
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to delete conversation")
+  }
+
+  return response.json() as Promise<{ success: true }>
 }
 
 export async function getCurrentUser() {
