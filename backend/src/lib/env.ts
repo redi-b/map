@@ -6,6 +6,7 @@ const schema = z.object({
   BETTER_AUTH_URL: z.string().url().default("http://localhost:4000"),
   PORT: z.coerce.number().int().positive().default(4000),
   FRONTEND_ORIGIN: z.string().url().default("http://localhost:3000"),
+  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
 })
 
 export const env = schema.parse(process.env)
