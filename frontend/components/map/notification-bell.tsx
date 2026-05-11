@@ -1,7 +1,7 @@
 "use client"
 
 import { BellIcon, CheckCheckIcon, Loader2Icon } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 
@@ -20,6 +20,20 @@ export function NotificationBell() {
   const [items, setItems] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [open])
 
   const fetchCount = useCallback(async () => {
     try {
@@ -49,9 +63,16 @@ export function NotificationBell() {
   }, [])
 
   useEffect(() => {
-    fetchCount()
-    const interval = setInterval(fetchCount, 30_000) // poll every 30s
-    return () => clearInterval(interval)
+    const timeout = window.setTimeout(() => {
+      void fetchCount()
+    }, 0)
+    const interval = window.setInterval(() => {
+      void fetchCount()
+    }, 30_000)
+    return () => {
+      window.clearTimeout(timeout)
+      window.clearInterval(interval)
+    }
   }, [fetchCount])
 
   function handleToggle() {
@@ -87,7 +108,7 @@ export function NotificationBell() {
   }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <button
         type="button"
         className="relative flex size-9 items-center justify-center rounded-full border bg-background transition hover:bg-secondary"

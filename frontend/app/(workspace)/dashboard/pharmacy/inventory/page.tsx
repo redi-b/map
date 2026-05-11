@@ -72,7 +72,11 @@ export default function PharmacyInventoryPage() {
   }, [search, stockFilter])
 
   useEffect(() => {
-    fetchInventory()
+    const timeout = window.setTimeout(() => {
+      void fetchInventory()
+    }, 0)
+
+    return () => window.clearTimeout(timeout)
   }, [fetchInventory])
 
   useEffect(() => {
