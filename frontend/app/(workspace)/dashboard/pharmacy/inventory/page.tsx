@@ -1,7 +1,8 @@
 "use client"
 
 import { CloudUploadIcon, Loader2Icon, PackageSearchIcon, PencilIcon, PlusIcon, TrashIcon, XIcon } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { readSheet } from "read-excel-file/browser"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -28,8 +29,142 @@ type MedicineOption = {
   category: string
 }
 
+type BatchInventoryRow = {
+  medicineId?: string
+  medicineName?: string
+  form?: string
+  strength?: string
+  quantity: number
+  unitPriceEtb: number
+  stockStatus?: InventoryItem["stockStatus"]
+  expiresAt?: string | null
+}
+
+type BatchImportResult = {
+  imported: number
+  updated: number
+  skipped: number
+  errors: Array<{ row: number; message: string }>
+}
+
 const stockLabels = { in_stock: "In stock", low_stock: "Low stock", out_of_stock: "Out of stock" }
 const stockVariants = { in_stock: "default", low_stock: "secondary", out_of_stock: "outline" } as const
+
+const headerAliases = {
+  medicineId: ["medicineid", "medicine_id", "id"],
+  medicineName: ["medicine", "medicine_name", "name"],
+  form: ["form"],
+  strength: ["strength", "dose"],
+  quantity: ["quantity", "qty", "stock"],
+  unitPriceEtb: ["unitpriceetb", "unit_price_etb", "unitprice", "unit_price", "price", "priceetb"],
+  stockStatus: ["stockstatus", "stock_status", "status"],
+  expiresAt: ["expiresat", "expires_at", "expiry", "expiration", "expirydate", "expiry_date"],
+}
+
+function normalizeHeader(value: string) {
+  return value.trim().toLowerCase().replace(/[\s-]+/g, "_")
+}
+
+function readCell(row: Record<string, unknown>, aliases: string[]) {
+  const match = Object.entries(row).find(([key]) => aliases.includes(normalizeHeader(key)))
+  return match?.[1]
+}
+
+function readString(row: Record<string, unknown>, aliases: string[]) {
+  const value = readCell(row, aliases)
+  return value === undefined || value === null ? "" : String(value).trim()
+}
+
+function readNumber(row: Record<string, unknown>, aliases: string[]) {
+  const value = readCell(row, aliases)
+  if (typeof value === "number") return value
+  const cleaned = String(value ?? "").replace(/,/g, "").trim()
+  return cleaned ? Number(cleaned) : Number.NaN
+}
+
+function readStatus(row: Record<string, unknown>): InventoryItem["stockStatus"] | undefined {
+  const value = readString(row, headerAliases.stockStatus).toLowerCase().replace(/[\s-]+/g, "_")
+  if (value === "in_stock" || value === "low_stock" || value === "out_of_stock") return value
+  return undefined
+}
+
+function readDate(row: Record<string, unknown>) {
+  const value = readCell(row, headerAliases.expiresAt)
+  if (!value) return null
+  if (value instanceof Date) return value.toISOString()
+  const parsed = new Date(String(value))
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
+}
+
+function csvLineToCells(line: string) {
+  const cells: string[] = []
+  let current = ""
+  let quoted = false
+
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index]
+    const next = line[index + 1]
+
+    if (character === "\"" && quoted && next === "\"") {
+      current += "\""
+      index += 1
+    } else if (character === "\"") {
+      quoted = !quoted
+    } else if (character === "," && !quoted) {
+      cells.push(current.trim())
+      current = ""
+    } else {
+      current += character
+    }
+  }
+
+  cells.push(current.trim())
+  return cells
+}
+
+function rowsToRecords(rows: unknown[][]) {
+  const [headers = [], ...body] = rows
+  const normalizedHeaders = headers.map((header) => String(header ?? "").trim())
+
+  return body.map((cells) => {
+    const row: Record<string, unknown> = {}
+    normalizedHeaders.forEach((header, index) => {
+      if (header) row[header] = cells[index] ?? ""
+    })
+    return row
+  })
+}
+
+async function readSpreadsheetRecords(file: File) {
+  if (file.name.toLowerCase().endsWith(".csv")) {
+    const lines = (await file.text()).split(/\r?\n/).filter((line) => line.trim())
+    return rowsToRecords(lines.map(csvLineToCells))
+  }
+
+  return rowsToRecords(await readSheet(file))
+}
+
+function parseInventoryRows(sheetRows: Array<Record<string, unknown>>): BatchInventoryRow[] {
+  return sheetRows
+    .map((row) => {
+      const medicineId = readString(row, headerAliases.medicineId)
+      const medicineName = readString(row, headerAliases.medicineName)
+      const quantity = readNumber(row, headerAliases.quantity)
+      const unitPriceEtb = readNumber(row, headerAliases.unitPriceEtb)
+
+      return {
+        medicineId: medicineId || undefined,
+        medicineName: medicineName || undefined,
+        form: readString(row, headerAliases.form) || undefined,
+        strength: readString(row, headerAliases.strength) || undefined,
+        quantity,
+        unitPriceEtb,
+        stockStatus: readStatus(row),
+        expiresAt: readDate(row),
+      }
+    })
+    .filter((row) => row.medicineId || row.medicineName || Number.isFinite(row.quantity) || Number.isFinite(row.unitPriceEtb))
+}
 
 export default function PharmacyInventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([])
@@ -50,6 +185,9 @@ export default function PharmacyInventoryPage() {
   const [addQuantity, setAddQuantity] = useState("")
   const [addPrice, setAddPrice] = useState("")
   const [saving, setSaving] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState<BatchImportResult | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const fetchInventory = useCallback(async () => {
     try {
@@ -154,6 +292,53 @@ export default function PharmacyInventoryPage() {
     }
   }
 
+  async function handleImport(file: File) {
+    setImporting(true)
+    setError("")
+    setImportResult(null)
+
+    try {
+      const items = parseInventoryRows(await readSpreadsheetRecords(file))
+
+      if (items.length === 0) {
+        setError("No inventory rows found. Include medicine, quantity, and price columns.")
+        return
+      }
+
+      const invalidRows = items
+        .map((item, index) => ({ item, row: index + 2 }))
+        .filter(({ item }) => !Number.isInteger(item.quantity) || item.quantity < 0 || !Number.isFinite(item.unitPriceEtb) || item.unitPriceEtb <= 0)
+
+      if (invalidRows.length > 0) {
+        setError(`Check quantity and price values before importing. First issue is on row ${invalidRows[0].row}.`)
+        return
+      }
+
+      const response = await fetch(`${apiBaseUrl}/api/inventory/batch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ items: items satisfies BatchInventoryRow[] }),
+      })
+
+      const result = (await response.json()) as BatchImportResult
+      setImportResult(result)
+
+      if (!response.ok && result.errors?.length) {
+        setError(`Import finished with ${result.skipped} skipped row${result.skipped === 1 ? "" : "s"}.`)
+      } else if (!response.ok) {
+        setError("Import failed. Check the spreadsheet columns and try again.")
+      }
+
+      await fetchInventory()
+    } catch {
+      setError("Unable to read this spreadsheet. Upload a CSV or XLSX file.")
+    } finally {
+      setImporting(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }
+
   function startEdit(item: InventoryItem) {
     setEditingId(item.id)
     setEditQuantity(String(item.quantity))
@@ -207,9 +392,23 @@ export default function PharmacyInventoryPage() {
               <PlusIcon data-icon="inline-start" />
               Add item
             </Button>
-            <Button disabled>
-              <CloudUploadIcon data-icon="inline-start" />
-              Batch update
+            <input
+              ref={fileInputRef}
+              className="hidden"
+              type="file"
+              accept=".csv,.xlsx"
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                if (file) void handleImport(file)
+              }}
+            />
+            <Button variant="outline" disabled={importing} onClick={() => fileInputRef.current?.click()}>
+              {importing ? (
+                <Loader2Icon data-icon="inline-start" className="animate-spin" />
+              ) : (
+                <CloudUploadIcon data-icon="inline-start" />
+              )}
+              Import sheet
             </Button>
           </div>
         </CardHeader>
@@ -274,6 +473,22 @@ export default function PharmacyInventoryPage() {
           ) : null}
 
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
+          {importResult ? (
+            <div className="rounded-lg border bg-muted/40 p-3 text-sm">
+              <p className="font-medium">
+                Imported {importResult.imported} new item{importResult.imported === 1 ? "" : "s"} and updated {importResult.updated}.
+              </p>
+              {importResult.errors.length ? (
+                <ul className="mt-2 space-y-1 text-muted-foreground">
+                  {importResult.errors.slice(0, 4).map((item) => (
+                    <li key={`${item.row}-${item.message}`}>Row {item.row}: {item.message}</li>
+                  ))}
+                  {importResult.errors.length > 4 ? <li>{importResult.errors.length - 4} more rows skipped.</li> : null}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
 
           {/* Table */}
           <Table>

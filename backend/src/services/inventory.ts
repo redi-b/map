@@ -1,7 +1,15 @@
 import { and, desc, eq, ilike, ne } from "drizzle-orm"
 import { db } from "../db/client.js"
 import { inventoryItems, medicines, pharmacies, pharmacyStaff } from "../db/schema.js"
-import type { AddInventoryItemInput, UpdateInventoryItemInput } from "../validators/inventory.js"
+import type { AddInventoryItemInput, BatchInventoryItemInput, UpdateInventoryItemInput } from "../validators/inventory.js"
+
+function getStockStatus(quantity: number) {
+  return quantity === 0 ? "out_of_stock" : quantity < 10 ? "low_stock" : "in_stock"
+}
+
+function normalizeLookup(value: string | null | undefined) {
+  return value?.trim().toLowerCase().replace(/\s+/g, " ") ?? ""
+}
 
 /** Find which pharmacy a staff member belongs to. */
 export async function getPharmacyForStaff(profileId: string) {
@@ -79,7 +87,7 @@ export async function listInventory(pharmacyId: string, filters?: { search?: str
 }
 
 export async function addInventoryItem(pharmacyId: string, input: AddInventoryItemInput) {
-  const status = input.stockStatus ?? (input.quantity === 0 ? "out_of_stock" : input.quantity < 10 ? "low_stock" : "in_stock")
+  const status = input.stockStatus ?? getStockStatus(input.quantity)
 
   const [item] = await db
     .insert(inventoryItems)
@@ -96,6 +104,76 @@ export async function addInventoryItem(pharmacyId: string, input: AddInventoryIt
   return item
 }
 
+export async function batchUpsertInventoryItems(pharmacyId: string, items: BatchInventoryItemInput[]) {
+  const catalog = await listMedicines()
+  const errors: Array<{ row: number; message: string }> = []
+  let imported = 0
+  let updated = 0
+
+  for (const [index, input] of items.entries()) {
+    const row = index + 2
+    let medicineId = input.medicineId
+
+    if (!medicineId && input.medicineName) {
+      const matches = catalog.filter((medicine) => {
+        const nameMatches = normalizeLookup(medicine.name) === normalizeLookup(input.medicineName)
+        const formMatches = input.form ? normalizeLookup(medicine.form) === normalizeLookup(input.form) : true
+        const strengthMatches = input.strength
+          ? normalizeLookup(medicine.strength) === normalizeLookup(input.strength)
+          : true
+
+        return nameMatches && formMatches && strengthMatches
+      })
+
+      if (matches.length === 1) {
+        medicineId = matches[0].id
+      } else if (matches.length > 1) {
+        errors.push({ row, message: "Multiple catalog matches. Add form or strength to this row." })
+        continue
+      } else {
+        errors.push({ row, message: "Medicine was not found in the catalog." })
+        continue
+      }
+    }
+
+    if (!medicineId) {
+      errors.push({ row, message: "Missing medicine id or medicine name." })
+      continue
+    }
+
+    const [existing] = await db
+      .select({ id: inventoryItems.id })
+      .from(inventoryItems)
+      .where(and(eq(inventoryItems.pharmacyId, pharmacyId), eq(inventoryItems.medicineId, medicineId)))
+      .limit(1)
+
+    const values = {
+      pharmacyId,
+      medicineId,
+      quantity: input.quantity,
+      unitPriceEtb: String(input.unitPriceEtb),
+      stockStatus: input.stockStatus ?? getStockStatus(input.quantity),
+      expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
+      updatedAt: new Date(),
+    }
+
+    if (existing) {
+      await db.update(inventoryItems).set(values).where(eq(inventoryItems.id, existing.id))
+      updated += 1
+    } else {
+      await db.insert(inventoryItems).values(values)
+      imported += 1
+    }
+  }
+
+  return {
+    imported,
+    updated,
+    skipped: errors.length,
+    errors,
+  }
+}
+
 export async function updateInventoryItem(itemId: string, pharmacyId: string, input: UpdateInventoryItemInput) {
   // Verify ownership
   const [existing] = await db
@@ -107,7 +185,7 @@ export async function updateInventoryItem(itemId: string, pharmacyId: string, in
   if (!existing) return null
 
   const newQuantity = input.quantity ?? existing.quantity
-  const autoStatus = newQuantity === 0 ? "out_of_stock" : newQuantity < 10 ? "low_stock" : "in_stock"
+  const autoStatus = getStockStatus(newQuantity)
 
   const [updated] = await db
     .update(inventoryItems)

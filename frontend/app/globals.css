@@ -46,6 +46,8 @@
 }
 
 :root {
+  --font-manrope: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sora: "Aptos Display", "Segoe UI", Inter, Roboto, Arial, sans-serif;
   --radius: 0.5rem;
   --background: oklch(0.982 0.006 158);
   --foreground: oklch(0.18 0.018 158);

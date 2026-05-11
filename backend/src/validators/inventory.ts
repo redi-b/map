@@ -15,5 +15,24 @@ export const updateInventoryItemSchema = z.object({
   expiresAt: z.string().datetime().optional().nullable(),
 })
 
+export const batchInventoryItemSchema = z.object({
+  medicineId: z.string().uuid().optional(),
+  medicineName: z.string().trim().min(1).optional(),
+  form: z.string().trim().min(1).optional(),
+  strength: z.string().trim().min(1).optional().nullable(),
+  quantity: z.number().int().min(0),
+  unitPriceEtb: z.number().positive(),
+  stockStatus: z.enum(["in_stock", "low_stock", "out_of_stock"]).optional(),
+  expiresAt: z.string().datetime().optional().nullable(),
+}).refine((value) => value.medicineId || value.medicineName, {
+  message: "Provide a medicine id or medicine name",
+  path: ["medicineName"],
+})
+
+export const batchInventoryItemsSchema = z.object({
+  items: z.array(batchInventoryItemSchema).min(1).max(200),
+})
+
 export type AddInventoryItemInput = z.infer<typeof addInventoryItemSchema>
 export type UpdateInventoryItemInput = z.infer<typeof updateInventoryItemSchema>
+export type BatchInventoryItemInput = z.infer<typeof batchInventoryItemSchema>
