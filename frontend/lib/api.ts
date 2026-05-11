@@ -40,6 +40,31 @@ export type CurrentAccess = {
   homePath: string
 }
 
+export type DoseStatus = "taken" | "skipped" | "upcoming"
+
+export type AdherenceDose = {
+  id: string
+  reminderId: string
+  medicine: string
+  dosage: string
+  frequency: string
+  time: string
+  scheduledAt: string
+  status: DoseStatus
+}
+
+export type TodayAdherence = {
+  doses: AdherenceDose[]
+  summary: {
+    total: number
+    taken: number
+    skipped: number
+    upcoming: number
+    progress: number
+    refillAlerts: number
+  }
+}
+
 export type SearchFilters = {
   q: string
   neighborhood?: string
@@ -97,6 +122,68 @@ export async function getCurrentAccess() {
   }
 
   return response.json() as Promise<CurrentAccess>
+}
+
+export async function getTodayAdherence() {
+  const response = await fetch(`${apiBaseUrl}/api/adherence/today`, {
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to load adherence schedule")
+  }
+
+  return response.json() as Promise<TodayAdherence>
+}
+
+export async function createReminder(input: {
+  medicineName: string
+  dosage: string
+  frequency: string
+  nextDoseAt: string
+  durationDays?: number
+  supplyRemainingDays?: number
+}) {
+  const response = await fetch(`${apiBaseUrl}/api/reminders`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(input),
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to create reminder")
+  }
+
+  return response.json()
+}
+
+export async function updateDoseEventStatus(id: string, status: DoseStatus) {
+  const response = await fetch(`${apiBaseUrl}/api/dose-events/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ status }),
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to update dose")
+  }
+
+  return response.json()
+}
+
+export async function resetTodayAdherence() {
+  const response = await fetch(`${apiBaseUrl}/api/adherence/today/reset`, {
+    method: "POST",
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to reset doses")
+  }
+
+  return response.json() as Promise<{ resetCount: number }>
 }
 
 export async function getCurrentUser() {

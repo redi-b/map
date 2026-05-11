@@ -2,6 +2,7 @@ import "dotenv/config"
 import cors from "@fastify/cors"
 import sensible from "@fastify/sensible"
 import Fastify from "fastify"
+import { adherenceRoutes } from "./routes/adherence.js"
 import { authRoutes } from "./routes/auth.js"
 import { availabilityRoutes } from "./routes/availability.js"
 import { catalogRoutes } from "./routes/catalog.js"
@@ -24,6 +25,7 @@ await app.register(cors, {
 })
 await app.register(sensible)
 await app.register(healthRoutes)
+await app.register(adherenceRoutes, { prefix: "/api" })
 await app.register(authRoutes, { prefix: "/api" })
 await app.register(availabilityRoutes, { prefix: "/api" })
 await app.register(catalogRoutes, { prefix: "/api" })
