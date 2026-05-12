@@ -47,6 +47,8 @@ type BatchImportResult = {
   errors: Array<{ row: number; message: string }>
 }
 
+type AddInventoryErrors = Partial<Record<"medicineId" | "quantity" | "price", string>>
+
 const stockLabels = { in_stock: "In stock", low_stock: "Low stock", out_of_stock: "Out of stock" }
 const stockVariants = { in_stock: "default", low_stock: "secondary", out_of_stock: "outline" } as const
 
@@ -184,6 +186,7 @@ export default function PharmacyInventoryPage() {
   const [addMedicineId, setAddMedicineId] = useState("")
   const [addQuantity, setAddQuantity] = useState("")
   const [addPrice, setAddPrice] = useState("")
+  const [addErrors, setAddErrors] = useState<AddInventoryErrors>({})
   const [saving, setSaving] = useState(false)
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<BatchImportResult | null>(null)
@@ -230,6 +233,39 @@ export default function PharmacyInventoryPage() {
     outOfStock: items.filter((i) => i.stockStatus === "out_of_stock").length,
   }
 
+  function validateAddInventory() {
+    const nextErrors: AddInventoryErrors = {}
+    const quantity = Number(addQuantity)
+    const price = Number(addPrice)
+
+    if (!addMedicineId) {
+      nextErrors.medicineId = "Select a medicine."
+    }
+
+    if (!addQuantity.trim()) {
+      nextErrors.quantity = "Enter the quantity."
+    } else if (!Number.isInteger(quantity) || quantity < 0) {
+      nextErrors.quantity = "Quantity must be a whole number, 0 or higher."
+    }
+
+    if (!addPrice.trim()) {
+      nextErrors.price = "Enter the unit price."
+    } else if (!Number.isFinite(price) || price <= 0) {
+      nextErrors.price = "Price must be greater than 0."
+    }
+
+    setAddErrors(nextErrors)
+    return { isValid: Object.keys(nextErrors).length === 0, quantity, price }
+  }
+
+  function resetAddForm() {
+    setShowAdd(false)
+    setAddMedicineId("")
+    setAddQuantity("")
+    setAddPrice("")
+    setAddErrors({})
+  }
+
   async function handleUpdate(itemId: string) {
     setSaving(true)
     try {
@@ -266,27 +302,33 @@ export default function PharmacyInventoryPage() {
   }
 
   async function handleAdd() {
-    if (!addMedicineId || !addQuantity || !addPrice) return
+    const validation = validateAddInventory()
+    if (!validation.isValid) return
+
     setSaving(true)
+    setError("")
 
     try {
-      await fetch(`${apiBaseUrl}/api/inventory`, {
+      const response = await fetch(`${apiBaseUrl}/api/inventory`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
           medicineId: addMedicineId,
-          quantity: Number(addQuantity),
-          unitPriceEtb: Number(addPrice),
+          quantity: validation.quantity,
+          unitPriceEtb: validation.price,
         }),
       })
-      setShowAdd(false)
-      setAddMedicineId("")
-      setAddQuantity("")
-      setAddPrice("")
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => null)
+        throw new Error(body?.error ?? "Failed to add item")
+      }
+
+      resetAddForm()
       await fetchInventory()
-    } catch {
-      setError("Failed to add item")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add item")
     } finally {
       setSaving(false)
     }
@@ -444,7 +486,12 @@ export default function PharmacyInventoryPage() {
                 <select
                   className="h-9 rounded-md border bg-background px-3 text-sm"
                   value={addMedicineId}
-                  onChange={(e) => setAddMedicineId(e.target.value)}
+                  aria-invalid={Boolean(addErrors.medicineId)}
+                  aria-describedby={addErrors.medicineId ? "add-medicine-error" : undefined}
+                  onChange={(e) => {
+                    setAddMedicineId(e.target.value)
+                    setAddErrors((current) => ({ ...current, medicineId: undefined }))
+                  }}
                 >
                   <option value="">Select medicine...</option>
                   {medicines.map((m) => (
@@ -453,20 +500,56 @@ export default function PharmacyInventoryPage() {
                     </option>
                   ))}
                 </select>
+                {addErrors.medicineId ? (
+                  <span id="add-medicine-error" className="text-xs text-destructive">
+                    {addErrors.medicineId}
+                  </span>
+                ) : null}
               </label>
-              <label className="flex w-28 flex-col gap-1 text-sm font-medium">
+              <label className="flex w-36 flex-col gap-1 text-sm font-medium">
                 Quantity
-                <Input type="number" min="0" value={addQuantity} onChange={(e) => setAddQuantity(e.target.value)} />
+                <Input
+                  type="number"
+                  min="0"
+                  value={addQuantity}
+                  aria-invalid={Boolean(addErrors.quantity)}
+                  aria-describedby={addErrors.quantity ? "add-quantity-error" : undefined}
+                  onChange={(e) => {
+                    setAddQuantity(e.target.value)
+                    setAddErrors((current) => ({ ...current, quantity: undefined }))
+                  }}
+                />
+                {addErrors.quantity ? (
+                  <span id="add-quantity-error" className="text-xs text-destructive">
+                    {addErrors.quantity}
+                  </span>
+                ) : null}
               </label>
-              <label className="flex w-28 flex-col gap-1 text-sm font-medium">
+              <label className="flex w-36 flex-col gap-1 text-sm font-medium">
                 Price ETB
-                <Input type="number" min="0" step="0.01" value={addPrice} onChange={(e) => setAddPrice(e.target.value)} />
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={addPrice}
+                  aria-invalid={Boolean(addErrors.price)}
+                  aria-describedby={addErrors.price ? "add-price-error" : undefined}
+                  onChange={(e) => {
+                    setAddPrice(e.target.value)
+                    setAddErrors((current) => ({ ...current, price: undefined }))
+                  }}
+                />
+                {addErrors.price ? (
+                  <span id="add-price-error" className="text-xs text-destructive">
+                    {addErrors.price}
+                  </span>
+                ) : null}
               </label>
-              <Button onClick={handleAdd} disabled={saving || !addMedicineId}>
+              <Button onClick={handleAdd} disabled={saving}>
                 {saving ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
                 Add
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => setShowAdd(false)}>
+              <Button variant="ghost" size="icon" onClick={resetAddForm}>
                 <XIcon />
               </Button>
             </div>
