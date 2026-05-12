@@ -65,6 +65,10 @@ export const availabilityRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const response = await respondToRequest(id, pharmacyId, context.profile.id, parsed.data)
+    if (!response) {
+      return reply.status(404).send({ error: "Request not found" })
+    }
+
     return reply.status(201).send(response)
   })
 }

@@ -1,5 +1,9 @@
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"
 
+export function getApiUrl(path: string) {
+  return `${apiBaseUrl}${path}`
+}
+
 export type UserRole = "patient" | "pharmacist" | "admin"
 
 export type CurrentUser = {
@@ -99,6 +103,27 @@ export type Prescription = {
   neighborhood: string
   createdAt: string
   updatedAt: string
+}
+
+export type PharmacyPrescription = {
+  id: string
+  status: PrescriptionStatus
+  imageUrl: string | null
+  imageMimeType: string | null
+  notes: string | null
+  patientName: string
+  createdAt: string
+}
+
+export type AvailabilityRequest = {
+  id: string
+  medicineName: string
+  status: "pending" | "under_review" | "approved" | "rejected"
+  notes: string | null
+  isDelivery: boolean
+  proxyName: string | null
+  patientName: string
+  createdAt: string
 }
 
 export type SearchFilters = {
@@ -326,6 +351,80 @@ export async function createPrescription(input: {
   if (!response.ok) {
     const body = await response.json().catch(() => null)
     throw new Error(body?.error ?? "Unable to submit prescription")
+  }
+
+  return response.json()
+}
+
+export async function listPharmacyPrescriptions() {
+  const response = await fetch(`${apiBaseUrl}/api/prescriptions/pharmacy`, {
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to load prescription requests")
+  }
+
+  return response.json() as Promise<{ prescriptions: PharmacyPrescription[] }>
+}
+
+export async function reviewPrescription(input: {
+  prescriptionId: string
+  action: "approve" | "reject" | "request_resubmit" | "suggest_alternate"
+  instructions?: string
+  estimatedCostEtb?: number
+}) {
+  const response = await fetch(`${apiBaseUrl}/api/prescriptions/${input.prescriptionId}/review`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({
+      action: input.action,
+      instructions: input.instructions,
+      estimatedCostEtb: input.estimatedCostEtb,
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to update prescription request")
+  }
+
+  return response.json()
+}
+
+export async function listPharmacyAvailabilityRequests() {
+  const response = await fetch(`${apiBaseUrl}/api/availability-requests/pharmacy`, {
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to load availability requests")
+  }
+
+  return response.json() as Promise<{ requests: AvailabilityRequest[] }>
+}
+
+export async function respondToAvailabilityRequest(input: {
+  requestId: string
+  response: "available" | "not_available" | "alternate"
+  notes?: string
+  alternativeMedicineName?: string
+  estimatedPriceEtb?: number
+}) {
+  const response = await fetch(`${apiBaseUrl}/api/availability-requests/${input.requestId}/respond`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({
+      response: input.response,
+      notes: input.notes,
+      alternativeMedicineName: input.alternativeMedicineName,
+      estimatedPriceEtb: input.estimatedPriceEtb,
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to update availability request")
   }
 
   return response.json()

@@ -102,6 +102,20 @@ export async function respondToRequest(
   responderProfileId: string,
   input: RespondToRequestInput,
 ) {
+  const [request] = await db
+    .select({
+      id: availabilityRequests.id,
+      patientProfileId: availabilityRequests.patientProfileId,
+      medicineName: availabilityRequests.medicineName,
+    })
+    .from(availabilityRequests)
+    .where(and(eq(availabilityRequests.id, requestId), eq(availabilityRequests.pharmacyId, pharmacyId)))
+    .limit(1)
+
+  if (!request) {
+    return null
+  }
+
   const [response] = await db
     .insert(requestResponses)
     .values({
@@ -120,24 +134,15 @@ export async function respondToRequest(
   await db
     .update(availabilityRequests)
     .set({ status: newStatus, updatedAt: new Date() })
-    .where(eq(availabilityRequests.id, requestId))
+    .where(and(eq(availabilityRequests.id, requestId), eq(availabilityRequests.pharmacyId, pharmacyId)))
 
-  // Notify patient
-  const [req] = await db
-    .select({ patientProfileId: availabilityRequests.patientProfileId, medicineName: availabilityRequests.medicineName })
-    .from(availabilityRequests)
-    .where(eq(availabilityRequests.id, requestId))
-    .limit(1)
-
-  if (req) {
-    const responseLabel = input.response === "available" ? "is available" : input.response === "not_available" ? "is not available" : "has an alternative"
-    await createNotification(
-      req.patientProfileId,
-      `${req.medicineName} ${responseLabel} at the pharmacy. ${input.notes ?? ""}`.trim(),
-      "availability_request",
-      requestId,
-    )
-  }
+  const responseLabel = input.response === "available" ? "is available" : input.response === "not_available" ? "is not available" : "has an alternative"
+  await createNotification(
+    request.patientProfileId,
+    `${request.medicineName} ${responseLabel} at the pharmacy. ${input.notes ?? ""}`.trim(),
+    "availability_request",
+    requestId,
+  )
 
   return response
 }
