@@ -30,6 +30,8 @@ export default function AssistantPage() {
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(true)
   const [thinking, setThinking] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [deletingId, setDeletingId] = useState("")
   const [error, setError] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -61,7 +63,10 @@ export default function AssistantPage() {
   }, [activeSession?.messages.length])
 
   async function createNewSession() {
+    if (creating) return
+
     setError("")
+    setCreating(true)
 
     try {
       const session = await createAssistantSession()
@@ -69,12 +74,15 @@ export default function AssistantPage() {
       setActiveSessionId(session.id)
     } catch {
       setError("Unable to start a new conversation.")
+    } finally {
+      setCreating(false)
     }
   }
 
   async function removeSession(sessionId: string) {
-    if (sessions.length <= 1) return
+    if (sessions.length <= 1 || deletingId) return
     setError("")
+    setDeletingId(sessionId)
 
     try {
       await deleteAssistantSession(sessionId)
@@ -87,6 +95,8 @@ export default function AssistantPage() {
       })
     } catch {
       setError("Unable to delete that conversation.")
+    } finally {
+      setDeletingId("")
     }
   }
 
@@ -121,8 +131,8 @@ export default function AssistantPage() {
       <aside className="flex flex-col gap-3 rounded-lg border bg-card p-4">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold">Conversations</h2>
-          <Button variant="ghost" size="icon" onClick={createNewSession} aria-label="New conversation">
-            <PlusIcon />
+          <Button variant="ghost" size="icon" onClick={createNewSession} disabled={creating} aria-label="New conversation">
+            {creating ? <Loader2Icon className="size-4 animate-spin" /> : <PlusIcon />}
           </Button>
         </div>
 
@@ -133,11 +143,15 @@ export default function AssistantPage() {
               Loading
             </div>
           ) : sessions.length ? (
-            sessions.map((session) => (
+            sessions.map((session) => {
+              const deleting = deletingId === session.id
+
+              return (
               <div key={session.id} className="group flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => setActiveSessionId(session.id)}
+                  disabled={deleting}
                   className={`flex-1 rounded-md px-3 py-2 text-left text-sm transition ${
                     session.id === activeSession?.id ? "bg-secondary font-medium" : "hover:bg-secondary/70"
                   }`}
@@ -149,14 +163,16 @@ export default function AssistantPage() {
                     variant="ghost"
                     size="icon"
                     className="size-8 opacity-0 group-hover:opacity-100"
+                    disabled={Boolean(deletingId)}
                     onClick={() => removeSession(session.id)}
                     aria-label="Delete conversation"
                   >
-                    <Trash2Icon className="size-4" />
+                    {deleting ? <Loader2Icon className="size-4 animate-spin" /> : <Trash2Icon className="size-4" />}
                   </Button>
                 ) : null}
               </div>
-            ))
+              )
+            })
           ) : (
             <p className="rounded-md px-3 py-2 text-sm text-muted-foreground">No conversations yet.</p>
           )}
@@ -243,7 +259,11 @@ export default function AssistantPage() {
                 aria-label="Medication question"
               />
               <Button type="submit" disabled={!input.trim() || thinking || !activeSession}>
-                <SendIcon data-icon="inline-start" />
+                {thinking ? (
+                  <Loader2Icon data-icon="inline-start" className="animate-spin" />
+                ) : (
+                  <SendIcon data-icon="inline-start" />
+                )}
                 Send
               </Button>
             </form>

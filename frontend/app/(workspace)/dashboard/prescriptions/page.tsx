@@ -359,7 +359,7 @@ export default function PrescriptionsPage() {
 
                 <Button type="submit" disabled={!selectedFile || !pharmacyId || uploading}>
                   {uploading ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
-                  Submit prescription
+                  {uploading ? "Submitting..." : "Submit prescription"}
                 </Button>
                 <Button type="button" variant="ghost" size="sm" onClick={() => setShowUpload(false)}>
                   Cancel
