@@ -4,6 +4,7 @@ import {
   ActivityIcon,
   BellIcon,
   BotIcon,
+  Building2Icon,
   ChevronsUpDownIcon,
   ClipboardListIcon,
   LayoutDashboardIcon,
@@ -63,6 +64,7 @@ const patientItems: SidebarNavItem[] = [
 ]
 
 const pharmacyItems: SidebarNavItem[] = [
+  { label: "Branch setup", icon: Building2Icon, href: "/dashboard/pharmacy/setup" },
   { label: "Inventory", icon: PackageSearchIcon, href: "/dashboard/pharmacy/inventory" },
   { label: "Requests", icon: BellIcon, href: "/dashboard/pharmacy/requests" },
   { label: "Verification", icon: ShieldCheckIcon, href: "/dashboard/pharmacy/verification" },

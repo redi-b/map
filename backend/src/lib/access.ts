@@ -12,6 +12,7 @@ export const dashboardAccessByRole: Record<UserRole, string[]> = {
   ],
   pharmacist: [
     "/dashboard",
+    "/dashboard/pharmacy/setup",
     "/dashboard/pharmacy/inventory",
     "/dashboard/pharmacy/requests",
   ],
@@ -24,13 +25,13 @@ export const dashboardAccessByRole: Record<UserRole, string[]> = {
 
 export const roleHomePath: Record<UserRole, string> = {
   patient: "/dashboard",
-  pharmacist: "/dashboard/pharmacy/inventory",
+  pharmacist: "/dashboard",
   admin: "/dashboard",
 }
 
 export const accessAreasByRole: Record<UserRole, string[]> = {
   patient: ["dashboard", "find", "prescriptions", "adherence", "assistant"],
-  pharmacist: ["dashboard", "pharmacy.inventory", "pharmacy.requests"],
+  pharmacist: ["dashboard", "pharmacy.setup", "pharmacy.inventory", "pharmacy.requests"],
   admin: ["dashboard", "pharmacy.verification", "admin.users"],
 }
 

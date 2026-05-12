@@ -49,6 +49,16 @@ npm run db:migrate
 npm run db:seed
 ```
 
+The seed script creates one operations user and one pharmacist user per seeded pharmacy:
+
+```bash
+admin@map.local / mapAdmin2026!
+lion.pharmacist@map.local / mapPharmacy2026!
+wudassie.pharmacist@map.local / mapPharmacy2026!
+healthplus.pharmacist@map.local / mapPharmacy2026!
+redcross.pharmacist@map.local / mapPharmacy2026!
+```
+
 ## Development
 
 Run the frontend and backend together:

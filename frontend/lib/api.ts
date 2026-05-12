@@ -222,6 +222,25 @@ export type AdminUser = {
   isCurrentUser: boolean
 }
 
+export type PharmacySetupPharmacy = {
+  id: string
+  name: string
+  branchName: string | null
+  licenseNumber: string
+  address: string
+  neighborhood: string
+  phone: string
+  email: string | null
+  supportsDelivery: boolean
+  operatingHours: string | null
+  isVerified: boolean
+}
+
+export type PharmacySetupState = {
+  assignedPharmacy: PharmacySetupPharmacy | null
+  pharmacies: PharmacySetupPharmacy[]
+}
+
 export type SearchFilters = {
   q: string
   neighborhood?: string
@@ -384,6 +403,33 @@ export async function updateAdminUser(id: string, input: { role?: UserRole; isAc
   }
 
   return response.json() as Promise<AdminUser>
+}
+
+export async function getPharmacySetup() {
+  const response = await fetch(`${apiBaseUrl}/api/pharmacy/setup`, {
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to load pharmacy setup")
+  }
+
+  return response.json() as Promise<PharmacySetupState>
+}
+
+export async function assignPharmacy(pharmacyId: string) {
+  const response = await fetch(`${apiBaseUrl}/api/pharmacy/setup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ pharmacyId }),
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to set pharmacy branch")
+  }
+
+  return response.json() as Promise<PharmacySetupState>
 }
 
 export async function getTodayAdherence() {

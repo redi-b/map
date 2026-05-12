@@ -27,7 +27,7 @@ export const sessionRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(401).send({ error: "Unauthorized" })
     }
 
-    // Validate input — self-registering users can ONLY select "patient"
+    // Initial profile setup is patient-scoped.
     const parsed = createProfileSchema.safeParse(request.body)
 
     if (!parsed.success) {

@@ -11,6 +11,8 @@ const ADMIN_EMAIL = "admin@map.local"
 const ADMIN_PASSWORD = "mapAdmin2026!"
 const ADMIN_NAME = "MAP Administrator"
 
+const PHARMACIST_PASSWORD = "mapPharmacy2026!"
+
 // ─── Pharmacy seed data ──────────────────────────────────────────────────────
 const pharmacyRows = [
   {
@@ -64,6 +66,33 @@ const pharmacyRows = [
     latitude: "9.0121000",
     longitude: "38.8012000",
     isVerified: true,
+  },
+]
+
+const pharmacistRows = [
+  {
+    email: "lion.pharmacist@map.local",
+    name: "Lion Branch Pharmacist",
+    phone: "+251900000101",
+    pharmacyId: pharmacyRows[0].id,
+  },
+  {
+    email: "wudassie.pharmacist@map.local",
+    name: "Wudassie Branch Pharmacist",
+    phone: "+251900000202",
+    pharmacyId: pharmacyRows[1].id,
+  },
+  {
+    email: "healthplus.pharmacist@map.local",
+    name: "HealthPlus Branch Pharmacist",
+    phone: "+251900000303",
+    pharmacyId: pharmacyRows[2].id,
+  },
+  {
+    email: "redcross.pharmacist@map.local",
+    name: "Red Cross Branch Pharmacist",
+    phone: "+251900000404",
+    pharmacyId: pharmacyRows[3].id,
   },
 ]
 
@@ -276,37 +305,87 @@ async function seedAdmin() {
   console.log(`  Admin profile set for: ${ADMIN_EMAIL}`)
 }
 
-async function seedPharmacyStaff() {
-  const pharmacistProfiles = await db
-    .select({ id: profiles.id, fullName: profiles.fullName })
-    .from(profiles)
-    .where(eq(profiles.role, "pharmacist"))
-
-  if (!pharmacistProfiles.length) {
-    console.log("  No pharmacist profiles found to link")
-    return
+async function upsertPharmacist(row: (typeof pharmacistRows)[number]) {
+  try {
+    await auth.api.signUpEmail({
+      body: {
+        name: row.name,
+        email: row.email,
+        password: PHARMACIST_PASSWORD,
+      },
+    })
+    console.log(`  Created auth user: ${row.email}`)
+  } catch {
+    console.log(`  Auth user already exists: ${row.email}`)
   }
 
-  for (const profile of pharmacistProfiles) {
+  const [authUser] = await db
+    .select()
+    .from(user)
+    .where(eq(user.email, row.email))
+    .limit(1)
+
+  if (!authUser) {
+    console.error(`  Could not find pharmacist auth user: ${row.email}`)
+    return null
+  }
+
+  const [profile] = await db
+    .insert(profiles)
+    .values({
+      authUserId: authUser.id,
+      fullName: row.name,
+      phone: row.phone,
+      role: "pharmacist",
+      isActive: true,
+    })
+    .onConflictDoUpdate({
+      target: profiles.authUserId,
+      set: {
+        fullName: row.name,
+        phone: row.phone,
+        role: "pharmacist",
+        isActive: true,
+      },
+    })
+    .returning()
+
+  return profile
+}
+
+async function seedPharmacyStaff() {
+  for (const pharmacist of pharmacistRows) {
+    const profile = await upsertPharmacist(pharmacist)
+    if (!profile) continue
+
     const [existingStaff] = await db
-      .select({ id: pharmacyStaff.id })
+      .select({ id: pharmacyStaff.id, pharmacyId: pharmacyStaff.pharmacyId })
       .from(pharmacyStaff)
       .where(eq(pharmacyStaff.profileId, profile.id))
       .limit(1)
 
-    if (existingStaff) continue
+    if (existingStaff) {
+      if (existingStaff.pharmacyId !== pharmacist.pharmacyId) {
+        await db
+          .update(pharmacyStaff)
+          .set({ pharmacyId: pharmacist.pharmacyId, roleInPharmacy: "pharmacist" })
+          .where(eq(pharmacyStaff.id, existingStaff.id))
+      }
+    } else {
+      await db.insert(pharmacyStaff).values({
+        pharmacyId: pharmacist.pharmacyId,
+        profileId: profile.id,
+        roleInPharmacy: "pharmacist",
+      })
+    }
 
-    const pharmacy = pharmacyRows[0]
-    await db.insert(pharmacyStaff).values({
-      pharmacyId: pharmacy.id,
-      profileId: profile.id,
-      roleInPharmacy: "pharmacist",
-    })
+    const pharmacy = pharmacyRows.find((item) => item.id === pharmacist.pharmacyId)
+    if (!pharmacy) continue
 
     await db
       .update(pharmacies)
       .set({ ownerProfileId: profile.id })
-      .where(and(eq(pharmacies.id, pharmacy.id), isNull(pharmacies.ownerProfileId)))
+      .where(and(eq(pharmacies.id, pharmacist.pharmacyId), isNull(pharmacies.ownerProfileId)))
 
     console.log(`  Linked ${profile.fullName} to ${pharmacy.name}`)
   }
@@ -391,6 +470,11 @@ async function seed() {
   console.log("Admin login:")
   console.log(`  Email:    ${ADMIN_EMAIL}`)
   console.log(`  Password: ${ADMIN_PASSWORD}`)
+  console.log("\nPharmacist logins:")
+  for (const pharmacist of pharmacistRows) {
+    const pharmacy = pharmacyRows.find((item) => item.id === pharmacist.pharmacyId)
+    console.log(`  ${pharmacy?.name ?? "Pharmacy"}: ${pharmacist.email} / ${PHARMACIST_PASSWORD}`)
+  }
 }
 
 seed()

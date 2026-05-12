@@ -13,6 +13,7 @@ import { dashboardRoutes } from "./routes/dashboard.js"
 import { healthRoutes } from "./routes/health.js"
 import { inventoryRoutes } from "./routes/inventory.js"
 import { notificationRoutes } from "./routes/notification.js"
+import { pharmacySetupRoutes } from "./routes/pharmacy-setup.js"
 import { prescriptionRoutes } from "./routes/prescription.js"
 import { sessionRoutes } from "./routes/session.js"
 import { env } from "./lib/env.js"
@@ -44,6 +45,7 @@ await app.register(catalogRoutes, { prefix: "/api" })
 await app.register(dashboardRoutes, { prefix: "/api" })
 await app.register(inventoryRoutes, { prefix: "/api" })
 await app.register(notificationRoutes, { prefix: "/api" })
+await app.register(pharmacySetupRoutes, { prefix: "/api" })
 await app.register(prescriptionRoutes, { prefix: "/api" })
 await app.register(sessionRoutes, { prefix: "/api" })
 

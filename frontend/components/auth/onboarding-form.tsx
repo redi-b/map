@@ -143,7 +143,7 @@ export function OnboardingForm() {
               <div className="flex items-center gap-3">
                 <UserRoundIcon className="size-5 text-primary" />
                 <div>
-                  <p className="font-medium">Patient account</p>
+                  <p className="font-medium">Care account</p>
                   <p className="text-sm text-muted-foreground">
                     Search medicines, upload prescriptions, and manage reminders.
                   </p>
@@ -153,7 +153,7 @@ export function OnboardingForm() {
 
             <p className="flex items-start gap-2 text-sm text-muted-foreground">
               <CheckCircle2Icon className="mt-0.5 size-4 shrink-0 text-primary" />
-              Pharmacy and administrator accounts are set up by MAP operations staff.
+              Additional workspace access appears here after approval.
             </p>
 
             {error ? (
