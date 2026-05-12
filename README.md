@@ -83,3 +83,4 @@ npm run build
 - Deploy the backend to Render and set the backend environment variables there.
 - Use Neon for the production PostgreSQL database.
 - Use object storage for prescription images in production. Set `PRESCRIPTION_STORAGE_PROVIDER="r2"` and configure `R2_BUCKET`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, and `R2_SECRET_ACCESS_KEY`. Use `R2_ENDPOINT` only when you need to override the default Cloudflare R2 S3 endpoint. Local development can keep `PRESCRIPTION_STORAGE_PROVIDER="fs"`.
+- Dashboard routes are protected twice: the Next proxy enforces access when the frontend and API share a cookie host, and the client `AuthGate` plus backend RBAC enforce access for cross-domain Vercel/Render deployments.

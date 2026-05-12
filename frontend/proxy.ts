@@ -4,6 +4,12 @@ import { canAccessDashboardPath, getRoleHomePath, isUserRole } from "./lib/acces
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"
 
 export async function proxy(request: NextRequest) {
+  const apiUrl = new URL(apiBaseUrl)
+
+  if (apiUrl.hostname !== request.nextUrl.hostname) {
+    return NextResponse.next()
+  }
+
   const sessionResponse = await fetch(`${apiBaseUrl}/api/me`, {
     headers: {
       cookie: request.headers.get("cookie") ?? "",
@@ -13,7 +19,7 @@ export async function proxy(request: NextRequest) {
 
   if (!sessionResponse?.ok) {
     const loginUrl = new URL("/login", request.url)
-    loginUrl.searchParams.set("next", request.nextUrl.pathname)
+    loginUrl.searchParams.set("next", `${request.nextUrl.pathname}${request.nextUrl.search}`)
     return NextResponse.redirect(loginUrl)
   }
 
@@ -37,6 +43,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // matcher: ["/dashboard/:path*"],
-  matcher: [],
+  matcher: ["/dashboard/:path*"],
 }
