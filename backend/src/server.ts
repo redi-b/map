@@ -1,5 +1,6 @@
 import "dotenv/config"
 import cors from "@fastify/cors"
+import multipart from "@fastify/multipart"
 import sensible from "@fastify/sensible"
 import Fastify from "fastify"
 import { adherenceRoutes } from "./routes/adherence.js"
@@ -25,6 +26,12 @@ await app.register(cors, {
   credentials: true,
 })
 await app.register(sensible)
+await app.register(multipart, {
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+    files: 1,
+  },
+})
 await app.register(healthRoutes)
 await app.register(adherenceRoutes, { prefix: "/api" })
 await app.register(assistantRoutes, { prefix: "/api" })

@@ -1,30 +1,19 @@
 "use client"
 
-import { CheckCircle2Icon, ClockIcon, FileImageIcon, Loader2Icon, PackageIcon, UploadIcon, UserRoundIcon, XCircleIcon } from "lucide-react"
-import { useState } from "react"
+import { CheckCircle2Icon, ClockIcon, FileImageIcon, Loader2Icon, UploadIcon, XCircleIcon } from "lucide-react"
+import { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-
-type PrescriptionStatus = "uploaded" | "under_review" | "verified" | "rejected"
-
-type Prescription = {
-  id: string
-  status: PrescriptionStatus
-  pharmacy: string
-  note: string
-  date: string
-  isDelivery: boolean
-  proxyName?: string
-}
-
-// TODO: replace with API data when prescription service is wired
-const mockPrescriptions: Prescription[] = [
-  { id: "#MAP-7822-AD", status: "under_review", pharmacy: "Lion Pharmacy", note: "2 medications identified", date: "May 9, 2026", isDelivery: false },
-  { id: "#MAP-7794-BA", status: "verified", pharmacy: "Wudassie Pharmacy", note: "Ready for pickup", date: "May 8, 2026", isDelivery: false },
-  { id: "#MAP-7731-KZ", status: "verified", pharmacy: "HealthPlus", note: "Delivered yesterday", date: "May 7, 2026", isDelivery: true },
-]
+import {
+  createPrescription,
+  listPrescriptionPharmacies,
+  listPrescriptions,
+  type Prescription,
+  type PrescriptionPharmacy,
+  type PrescriptionStatus,
+} from "@/lib/api"
 
 const statusConfig: Record<PrescriptionStatus, { label: string; icon: typeof ClockIcon; variant: "default" | "secondary" | "outline" | "destructive" }> = {
   uploaded: { label: "Uploaded", icon: FileImageIcon, variant: "secondary" },
@@ -34,17 +23,66 @@ const statusConfig: Record<PrescriptionStatus, { label: string; icon: typeof Clo
 }
 
 export default function PrescriptionsPage() {
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([])
+  const [pharmacies, setPharmacies] = useState<PrescriptionPharmacy[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
   const [showUpload, setShowUpload] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [pharmacyId, setPharmacyId] = useState("")
   const [notes, setNotes] = useState("")
   const [isDelivery, setIsDelivery] = useState(false)
+  const [deliveryAddress, setDeliveryAddress] = useState("")
   const [proxyName, setProxyName] = useState("")
   const [proxyPhone, setProxyPhone] = useState("")
   const [uploading, setUploading] = useState(false)
 
+  const selectedPharmacy = pharmacies.find((pharmacy) => pharmacy.id === pharmacyId)
+  const deliveryUnavailable = selectedPharmacy ? !selectedPharmacy.supportsDelivery : false
+
+  async function loadPageData() {
+    setLoading(true)
+    setError("")
+
+    try {
+      const [prescriptionsData, pharmaciesData] = await Promise.all([
+        listPrescriptions(),
+        listPrescriptionPharmacies(),
+      ])
+      setPrescriptions(prescriptionsData.prescriptions)
+      setPharmacies(pharmaciesData.pharmacies)
+      setPharmacyId((current) => current || pharmaciesData.pharmacies[0]?.id || "")
+    } catch {
+      setError("Unable to load prescriptions right now.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      void loadPageData()
+    }, 0)
+
+    return () => window.clearTimeout(timeout)
+  }, [])
+
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (file) setSelectedFile(file)
+    if (!file) return
+
+    if (!file.type.startsWith("image/")) {
+      setError("Upload a prescription image file.")
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Prescription image must be 5 MB or smaller.")
+      return
+    }
+
+    setError("")
+    setSelectedFile(file)
   }
 
   async function handleUpload(e: React.FormEvent) {
@@ -52,15 +90,39 @@ export default function PrescriptionsPage() {
     if (!selectedFile) return
 
     setUploading(true)
-    // TODO: wire to POST /api/prescriptions when service is built
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    setUploading(false)
-    setShowUpload(false)
-    setSelectedFile(null)
-    setNotes("")
-    setIsDelivery(false)
-    setProxyName("")
-    setProxyPhone("")
+    setError("")
+
+    try {
+      await createPrescription({
+        pharmacyId,
+        image: selectedFile,
+        notes: notes.trim() || undefined,
+        isDelivery,
+        deliveryAddress: deliveryAddress.trim() || undefined,
+        proxyName: proxyName.trim() || undefined,
+        proxyPhone: proxyPhone.trim() || undefined,
+      })
+      setShowUpload(false)
+      setSelectedFile(null)
+      setNotes("")
+      setIsDelivery(false)
+      setDeliveryAddress("")
+      setProxyName("")
+      setProxyPhone("")
+      await loadPageData()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to submit prescription.")
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  function formatDate(value: string) {
+    return new Intl.DateTimeFormat("en", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(new Date(value))
   }
 
   return (
@@ -69,10 +131,29 @@ export default function PrescriptionsPage() {
       <section className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-[var(--font-display)] text-xl font-semibold">Your prescriptions</h2>
-          <Badge variant="secondary">{mockPrescriptions.length} total</Badge>
+          <Badge variant="secondary">{prescriptions.length} total</Badge>
         </div>
 
-        {mockPrescriptions.map((rx) => {
+        {error && !showUpload ? <p className="text-sm text-destructive">{error}</p> : null}
+
+        {loading ? (
+          <Card>
+            <CardContent className="flex items-center gap-3 p-6 text-sm text-muted-foreground">
+              <Loader2Icon className="size-4 animate-spin" />
+              Loading prescriptions
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {!loading && prescriptions.length === 0 ? (
+          <Card>
+            <CardContent className="p-6 text-sm text-muted-foreground">
+              No prescriptions submitted yet.
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {prescriptions.map((rx) => {
           const config = statusConfig[rx.status]
           const StatusIcon = config.icon
 
@@ -80,11 +161,11 @@ export default function PrescriptionsPage() {
             <Card key={rx.id}>
               <CardHeader className="flex flex-row items-start justify-between gap-4">
                 <div>
-                  <CardTitle>{rx.id}</CardTitle>
+                  <CardTitle>Prescription {rx.id.slice(0, 8)}</CardTitle>
                   <CardDescription className="mt-1 flex items-center gap-2">
                     {rx.pharmacy}
                     <span className="text-muted-foreground">·</span>
-                    {rx.date}
+                    {formatDate(rx.createdAt)}
                   </CardDescription>
                 </div>
                 <Badge variant={config.variant}>
@@ -93,18 +174,12 @@ export default function PrescriptionsPage() {
                 </Badge>
               </CardHeader>
               <CardContent className="flex items-center justify-between gap-3">
-                <p className="text-sm text-muted-foreground">{rx.note}</p>
+                <p className="text-sm text-muted-foreground">{rx.notes || "Submitted for pharmacy review"}</p>
                 <div className="flex gap-1">
-                  {rx.isDelivery ? (
+                  {rx.imageUrl ? (
                     <Badge variant="outline">
-                      <PackageIcon className="mr-1 size-3" />
-                      Delivery
-                    </Badge>
-                  ) : null}
-                  {rx.proxyName ? (
-                    <Badge variant="outline">
-                      <UserRoundIcon className="mr-1 size-3" />
-                      Proxy
+                      <FileImageIcon className="mr-1 size-3" />
+                      Image stored
                     </Badge>
                   ) : null}
                 </div>
@@ -131,6 +206,29 @@ export default function PrescriptionsPage() {
               </Button>
             ) : (
               <form className="flex flex-col gap-4" onSubmit={handleUpload}>
+                <label className="flex flex-col gap-1 text-sm font-medium">
+                  Pharmacy
+                  <select
+                    className="h-10 rounded-md border bg-background px-3 text-sm"
+                    value={pharmacyId}
+                    onChange={(event) => {
+                      const nextPharmacy = pharmacies.find((pharmacy) => pharmacy.id === event.target.value)
+                      setPharmacyId(event.target.value)
+                      if (nextPharmacy && !nextPharmacy.supportsDelivery) {
+                        setIsDelivery(false)
+                        setDeliveryAddress("")
+                      }
+                    }}
+                    required
+                  >
+                    {pharmacies.map((pharmacy) => (
+                      <option key={pharmacy.id} value={pharmacy.id}>
+                        {pharmacy.name} - {pharmacy.neighborhood}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
                 {/* File input */}
                 <label className="flex cursor-pointer flex-col items-center gap-3 rounded-lg border-2 border-dashed p-6 transition hover:border-primary">
                   <FileImageIcon className="size-8 text-muted-foreground" />
@@ -163,29 +261,43 @@ export default function PrescriptionsPage() {
                       type="radio"
                       name="collection"
                       checked={!isDelivery && !proxyName}
-                      onChange={() => { setIsDelivery(false); setProxyName(""); setProxyPhone("") }}
+                      onChange={() => { setIsDelivery(false); setDeliveryAddress(""); setProxyName(""); setProxyPhone("") }}
                     />
                     Self pickup
                   </label>
-                  <label className="flex items-center gap-2 text-sm">
+                  <label className={`flex items-center gap-2 text-sm ${deliveryUnavailable ? "text-muted-foreground" : ""}`}>
                     <input
                       type="radio"
                       name="collection"
                       checked={isDelivery}
+                      disabled={deliveryUnavailable}
                       onChange={() => { setIsDelivery(true); setProxyName(""); setProxyPhone("") }}
                     />
                     Delivery
+                    {deliveryUnavailable ? <span className="text-xs">(not offered by this pharmacy)</span> : null}
                   </label>
                   <label className="flex items-center gap-2 text-sm">
                     <input
                       type="radio"
                       name="collection"
                       checked={!isDelivery && !!proxyName}
-                      onChange={() => { setIsDelivery(false); setProxyName(" ") }}
+                      onChange={() => { setIsDelivery(false); setDeliveryAddress(""); setProxyName(" ") }}
                     />
                     Proxy pickup
                   </label>
                 </fieldset>
+
+                {isDelivery ? (
+                  <label className="flex flex-col gap-1 text-sm font-medium">
+                    Delivery address
+                    <Input
+                      value={deliveryAddress}
+                      onChange={(e) => setDeliveryAddress(e.target.value)}
+                      placeholder="Street, building, or nearby landmark"
+                      required
+                    />
+                  </label>
+                ) : null}
 
                 {/* Proxy fields */}
                 {!isDelivery && proxyName ? (
@@ -211,7 +323,9 @@ export default function PrescriptionsPage() {
                   </div>
                 ) : null}
 
-                <Button type="submit" disabled={!selectedFile || uploading}>
+                {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
+                <Button type="submit" disabled={!selectedFile || !pharmacyId || uploading}>
                   {uploading ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
                   Submit prescription
                 </Button>

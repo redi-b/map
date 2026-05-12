@@ -80,6 +80,27 @@ export type AssistantSession = {
   messages: AssistantMessage[]
 }
 
+export type PrescriptionStatus = "uploaded" | "under_review" | "verified" | "rejected"
+
+export type PrescriptionPharmacy = {
+  id: string
+  name: string
+  neighborhood: string
+  supportsDelivery: boolean
+}
+
+export type Prescription = {
+  id: string
+  status: PrescriptionStatus
+  imageUrl: string | null
+  imageMimeType: string | null
+  notes: string | null
+  pharmacy: string
+  neighborhood: string
+  createdAt: string
+  updatedAt: string
+}
+
 export type SearchFilters = {
   q: string
   neighborhood?: string
@@ -252,6 +273,62 @@ export async function deleteAssistantSession(sessionId: string) {
   }
 
   return response.json() as Promise<{ success: true }>
+}
+
+export async function listPrescriptionPharmacies() {
+  const response = await fetch(`${apiBaseUrl}/api/prescriptions/pharmacies`, {
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to load pharmacies")
+  }
+
+  return response.json() as Promise<{ pharmacies: PrescriptionPharmacy[] }>
+}
+
+export async function listPrescriptions() {
+  const response = await fetch(`${apiBaseUrl}/api/prescriptions`, {
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to load prescriptions")
+  }
+
+  return response.json() as Promise<{ prescriptions: Prescription[] }>
+}
+
+export async function createPrescription(input: {
+  pharmacyId: string
+  image: File
+  notes?: string
+  isDelivery: boolean
+  deliveryAddress?: string
+  proxyName?: string
+  proxyPhone?: string
+}) {
+  const formData = new FormData()
+  formData.set("pharmacyId", input.pharmacyId)
+  formData.set("image", input.image)
+  formData.set("isDelivery", String(input.isDelivery))
+  if (input.notes) formData.set("notes", input.notes)
+  if (input.deliveryAddress) formData.set("deliveryAddress", input.deliveryAddress)
+  if (input.proxyName) formData.set("proxyName", input.proxyName)
+  if (input.proxyPhone) formData.set("proxyPhone", input.proxyPhone)
+
+  const response = await fetch(`${apiBaseUrl}/api/prescriptions`, {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+  })
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null)
+    throw new Error(body?.error ?? "Unable to submit prescription")
+  }
+
+  return response.json()
 }
 
 export async function getCurrentUser() {

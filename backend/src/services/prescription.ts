@@ -10,18 +10,42 @@ import {
 import type { CreatePrescriptionInput, ReviewPrescriptionInput } from "../validators/prescription.js"
 import { createNotification } from "./notification.js"
 
+type PrescriptionImageMetadata = {
+  imageUrl: string
+  mimeType: string
+}
+
 export async function createPrescription(
   patientProfileId: string,
   input: CreatePrescriptionInput,
-  imageUrl?: string,
+  image?: PrescriptionImageMetadata,
 ) {
+  const [pharmacy] = await db
+    .select({
+      id: pharmacies.id,
+      name: pharmacies.name,
+      supportsDelivery: pharmacies.supportsDelivery,
+    })
+    .from(pharmacies)
+    .where(and(eq(pharmacies.id, input.pharmacyId), eq(pharmacies.isVerified, true)))
+    .limit(1)
+
+  if (!pharmacy) {
+    throw new Error("Selected pharmacy is not available")
+  }
+
+  if (input.isDelivery && !pharmacy.supportsDelivery) {
+    throw new Error("Selected pharmacy does not offer delivery")
+  }
+
   const [rx] = await db
     .insert(prescriptions)
     .values({
       patientProfileId,
       pharmacyId: input.pharmacyId,
       status: "uploaded",
-      imageUrl: imageUrl ?? null,
+      imageUrl: image?.imageUrl ?? null,
+      imageMimeType: image?.mimeType ?? null,
       notes: input.notes ?? null,
     })
     .returning()
@@ -29,7 +53,7 @@ export async function createPrescription(
   // Notify pharmacy staff
   await createNotification(
     patientProfileId,
-    `Prescription submitted to pharmacy. We'll notify you when it's reviewed.`,
+    `Prescription submitted to ${pharmacy.name}. We'll notify you when it's reviewed.`,
     "prescription",
     rx.id,
   )
@@ -43,6 +67,7 @@ export async function listPrescriptions(patientProfileId: string) {
       id: prescriptions.id,
       status: prescriptions.status,
       imageUrl: prescriptions.imageUrl,
+      imageMimeType: prescriptions.imageMimeType,
       notes: prescriptions.notes,
       createdAt: prescriptions.createdAt,
       updatedAt: prescriptions.updatedAt,
@@ -57,7 +82,8 @@ export async function listPrescriptions(patientProfileId: string) {
   return rows.map((r) => ({
     id: r.id,
     status: r.status,
-    imageUrl: r.imageUrl,
+    imageUrl: r.imageUrl ? `/api/prescriptions/${r.id}/image` : null,
+    imageMimeType: r.imageMimeType,
     notes: r.notes,
     pharmacy: r.pharmacyName,
     neighborhood: r.pharmacyNeighborhood,
@@ -73,6 +99,7 @@ export async function listPharmacyPrescriptions(pharmacyId: string) {
       id: prescriptions.id,
       status: prescriptions.status,
       imageUrl: prescriptions.imageUrl,
+      imageMimeType: prescriptions.imageMimeType,
       notes: prescriptions.notes,
       createdAt: prescriptions.createdAt,
       patientName: profiles.fullName,
@@ -85,7 +112,8 @@ export async function listPharmacyPrescriptions(pharmacyId: string) {
   return rows.map((r) => ({
     id: r.id,
     status: r.status,
-    imageUrl: r.imageUrl,
+    imageUrl: r.imageUrl ? `/api/prescriptions/${r.id}/image` : null,
+    imageMimeType: r.imageMimeType,
     notes: r.notes,
     patientName: r.patientName,
     createdAt: r.createdAt.toISOString(),
@@ -146,4 +174,25 @@ export async function getPrescription(prescriptionId: string) {
     .limit(1)
 
   return rx ?? null
+}
+
+export async function listVerifiedPrescriptionPharmacies() {
+  const rows = await db
+    .select({
+      id: pharmacies.id,
+      name: pharmacies.name,
+      branchName: pharmacies.branchName,
+      neighborhood: pharmacies.neighborhood,
+      supportsDelivery: pharmacies.supportsDelivery,
+    })
+    .from(pharmacies)
+    .where(eq(pharmacies.isVerified, true))
+    .orderBy(pharmacies.name)
+
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.branchName ? `${row.name} - ${row.branchName}` : row.name,
+    neighborhood: row.neighborhood,
+    supportsDelivery: row.supportsDelivery,
+  }))
 }
