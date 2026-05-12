@@ -1,83 +1,153 @@
 "use client"
 
-import { Building2Icon, CheckCircle2Icon, PlusIcon, ShieldCheckIcon, XCircleIcon } from "lucide-react"
-import { useState } from "react"
+import {
+  Building2Icon,
+  CheckCircle2Icon,
+  Loader2Icon,
+  MailIcon,
+  MapPinIcon,
+  PhoneIcon,
+  PlusIcon,
+  ShieldCheckIcon,
+  TruckIcon,
+  XCircleIcon,
+} from "lucide-react"
+import { type FormEvent, useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
+import {
+  createAdminPharmacy,
+  listAdminPharmacies,
+  verifyAdminPharmacy,
+  type AdminPharmacy,
+} from "@/lib/api"
 
-type PharmacyEntry = {
-  id: string
+type Filter = "all" | "verified" | "pending"
+
+type PharmacyForm = {
   name: string
   branchName: string
   neighborhood: string
+  address: string
   licenseNumber: string
   phone: string
-  isVerified: boolean
+  email: string
+  operatingHours: string
+  supportsDelivery: boolean
 }
 
-// TODO: wire to admin API when admin routes are built
-const initialPharmacies: PharmacyEntry[] = [
-  { id: "1", name: "Lion Pharmacy", branchName: "Bole Medhanialem", neighborhood: "Bole", licenseNumber: "AA-PH-1001", phone: "+251911000101", isVerified: true },
-  { id: "2", name: "Wudassie Pharmacy", branchName: "Kazanchis", neighborhood: "Kazanchis", licenseNumber: "AA-PH-1002", phone: "+251911000202", isVerified: true },
-  { id: "3", name: "HealthPlus Pharmacy", branchName: "Piazza", neighborhood: "Piazza", licenseNumber: "AA-PH-1003", phone: "+251911000303", isVerified: true },
-  { id: "4", name: "Red Cross Pharmacy", branchName: "Megenagna", neighborhood: "Megenagna", licenseNumber: "AA-PH-1004", phone: "+251911000404", isVerified: true },
-  { id: "5", name: "Unity Pharma", branchName: "Sarbet", neighborhood: "Sarbet", licenseNumber: "AA-PH-1005", phone: "+251911000505", isVerified: false },
-  { id: "6", name: "Arada Med", branchName: "Arada", neighborhood: "Arada", licenseNumber: "AA-PH-1006", phone: "+251911000606", isVerified: false },
-]
+const emptyForm: PharmacyForm = {
+  name: "",
+  branchName: "",
+  neighborhood: "",
+  address: "",
+  licenseNumber: "",
+  phone: "",
+  email: "",
+  operatingHours: "",
+  supportsDelivery: false,
+}
+
+function branchLabel(pharmacy: AdminPharmacy) {
+  return [pharmacy.name, pharmacy.branchName].filter(Boolean).join(" - ")
+}
 
 export default function PharmacyVerificationPage() {
-  const [pharmacies, setPharmacies] = useState(initialPharmacies)
-  const [filter, setFilter] = useState<"all" | "verified" | "pending">("all")
+  const [pharmacies, setPharmacies] = useState<AdminPharmacy[]>([])
+  const [filter, setFilter] = useState<Filter>("all")
   const [showRegister, setShowRegister] = useState(false)
+  const [form, setForm] = useState<PharmacyForm>(emptyForm)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [updatingId, setUpdatingId] = useState("")
+  const [error, setError] = useState("")
 
-  // Register form state
-  const [regName, setRegName] = useState("")
-  const [regBranch, setRegBranch] = useState("")
-  const [regNeighborhood, setRegNeighborhood] = useState("")
-  const [regLicense, setRegLicense] = useState("")
-  const [regPhone, setRegPhone] = useState("")
+  const filtered = useMemo(() => {
+    return pharmacies.filter((pharmacy) => {
+      if (filter === "verified") return pharmacy.isVerified
+      if (filter === "pending") return !pharmacy.isVerified
+      return true
+    })
+  }, [filter, pharmacies])
 
-  const filtered = pharmacies.filter((p) => {
-    if (filter === "verified") return p.isVerified
-    if (filter === "pending") return !p.isVerified
-    return true
-  })
+  const verifiedCount = pharmacies.filter((pharmacy) => pharmacy.isVerified).length
+  const pendingCount = pharmacies.length - verifiedCount
+  const deliveryCount = pharmacies.filter((pharmacy) => pharmacy.supportsDelivery).length
 
-  const verifiedCount = pharmacies.filter((p) => p.isVerified).length
-  const pendingCount = pharmacies.filter((p) => !p.isVerified).length
+  async function loadPharmacies() {
+    setLoading(true)
+    setError("")
 
-  function toggleVerify(id: string) {
-    setPharmacies((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, isVerified: !p.isVerified } : p))
-    )
+    try {
+      const data = await listAdminPharmacies()
+      setPharmacies(data.pharmacies)
+    } catch {
+      setError("Unable to load pharmacy registry.")
+    } finally {
+      setLoading(false)
+    }
   }
 
-  function handleRegister(e: React.FormEvent) {
-    e.preventDefault()
-    const newPharmacy: PharmacyEntry = {
-      id: String(Date.now()),
-      name: regName,
-      branchName: regBranch,
-      neighborhood: regNeighborhood,
-      licenseNumber: regLicense,
-      phone: regPhone,
-      isVerified: false,
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      void loadPharmacies()
+    }, 0)
+
+    return () => window.clearTimeout(timeout)
+  }, [])
+
+  function updateForm<K extends keyof PharmacyForm>(key: K, value: PharmacyForm[K]) {
+    setForm((current) => ({ ...current, [key]: value }))
+  }
+
+  async function toggleVerify(pharmacy: AdminPharmacy) {
+    setUpdatingId(pharmacy.id)
+    setError("")
+
+    try {
+      const updated = await verifyAdminPharmacy(pharmacy.id, !pharmacy.isVerified)
+      setPharmacies((current) => current.map((item) => (item.id === updated.id ? updated : item)))
+    } catch {
+      setError("Unable to update pharmacy verification.")
+    } finally {
+      setUpdatingId("")
     }
-    setPharmacies((prev) => [...prev, newPharmacy])
-    setShowRegister(false)
-    setRegName("")
-    setRegBranch("")
-    setRegNeighborhood("")
-    setRegLicense("")
-    setRegPhone("")
+  }
+
+  async function handleRegister(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSaving(true)
+    setError("")
+
+    try {
+      const pharmacy = await createAdminPharmacy({
+        name: form.name.trim(),
+        branchName: form.branchName.trim() || undefined,
+        neighborhood: form.neighborhood.trim(),
+        address: form.address.trim(),
+        licenseNumber: form.licenseNumber.trim(),
+        phone: form.phone.trim(),
+        email: form.email.trim() || undefined,
+        operatingHours: form.operatingHours.trim() || undefined,
+        supportsDelivery: form.supportsDelivery,
+      })
+
+      setPharmacies((current) => [pharmacy, ...current])
+      setForm(emptyForm)
+      setShowRegister(false)
+    } catch {
+      setError("Unable to register pharmacy. Check the required fields and try again.")
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
-      {/* Summary */}
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader>
             <CardTitle>{pharmacies.length}</CardTitle>
@@ -96,82 +166,144 @@ export default function PharmacyVerificationPage() {
             <CardDescription>Pending review</CardDescription>
           </CardHeader>
         </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>{deliveryCount}</CardTitle>
+            <CardDescription>Delivery enabled</CardDescription>
+          </CardHeader>
+        </Card>
       </section>
 
-      {/* Pharmacy list */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-4">
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
           <div>
             <CardTitle>Pharmacy registry</CardTitle>
-            <CardDescription>Manage pharmacy onboarding and verified participation.</CardDescription>
+            <CardDescription>Register branches and control which pharmacies appear to patients.</CardDescription>
           </div>
-          <Button onClick={() => setShowRegister((v) => !v)}>
+          <Button onClick={() => setShowRegister((value) => !value)}>
             <PlusIcon data-icon="inline-start" />
             Register pharmacy
           </Button>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          {/* Filter */}
-          <div className="flex gap-2">
-            {(["all", "verified", "pending"] as const).map((f) => (
-              <Button key={f} variant={filter === f ? "secondary" : "outline"} size="sm" onClick={() => setFilter(f)}>
-                {f === "all" ? "All" : f === "verified" ? "Verified" : "Pending"}
-              </Button>
-            ))}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex gap-2">
+              {(["all", "verified", "pending"] as const).map((item) => (
+                <Button key={item} variant={filter === item ? "secondary" : "outline"} size="sm" onClick={() => setFilter(item)}>
+                  {item === "all" ? "All" : item === "verified" ? "Verified" : "Pending"}
+                </Button>
+              ))}
+            </div>
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
           </div>
 
-          {/* Registration form */}
           {showRegister ? (
-            <form onSubmit={handleRegister} className="flex flex-col gap-3 rounded-lg border bg-secondary/50 p-4">
-              <p className="font-medium">Register a new pharmacy</p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Input placeholder="Pharmacy name" value={regName} onChange={(e) => setRegName(e.target.value)} required />
-                <Input placeholder="Branch name" value={regBranch} onChange={(e) => setRegBranch(e.target.value)} required />
-                <Input placeholder="Neighborhood" value={regNeighborhood} onChange={(e) => setRegNeighborhood(e.target.value)} required />
-                <Input placeholder="License number" value={regLicense} onChange={(e) => setRegLicense(e.target.value)} required />
-                <Input placeholder="Phone (+251...)" value={regPhone} onChange={(e) => setRegPhone(e.target.value)} required />
+            <form onSubmit={handleRegister} className="grid gap-4 rounded-lg border bg-secondary/40 p-4">
+              <div>
+                <p className="font-medium">Register a pharmacy</p>
+                <p className="text-sm text-muted-foreground">New branches stay hidden from patients until verified.</p>
               </div>
-              <div className="flex gap-2">
-                <Button type="submit">Register</Button>
-                <Button type="button" variant="ghost" onClick={() => setShowRegister(false)}>Cancel</Button>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Input placeholder="Pharmacy name" value={form.name} onChange={(event) => updateForm("name", event.target.value)} required />
+                <Input placeholder="Branch name" value={form.branchName} onChange={(event) => updateForm("branchName", event.target.value)} />
+                <Input placeholder="Neighborhood" value={form.neighborhood} onChange={(event) => updateForm("neighborhood", event.target.value)} required />
+                <Input placeholder="Street address" value={form.address} onChange={(event) => updateForm("address", event.target.value)} required />
+                <Input placeholder="License number" value={form.licenseNumber} onChange={(event) => updateForm("licenseNumber", event.target.value)} required />
+                <Input placeholder="Phone (+251...)" value={form.phone} onChange={(event) => updateForm("phone", event.target.value)} required />
+                <Input placeholder="Email" type="email" value={form.email} onChange={(event) => updateForm("email", event.target.value)} />
+                <Input placeholder="Operating hours" value={form.operatingHours} onChange={(event) => updateForm("operatingHours", event.target.value)} />
+              </div>
+              <label className="flex items-center justify-between gap-4 rounded-md border bg-background p-3 text-sm font-medium">
+                <span className="flex items-center gap-2">
+                  <TruckIcon className="size-4 text-muted-foreground" />
+                  Delivery available
+                </span>
+                <Switch
+                  checked={form.supportsDelivery}
+                  onCheckedChange={(checked) => updateForm("supportsDelivery", checked)}
+                />
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <Button type="submit" disabled={saving}>
+                  {saving ? <Loader2Icon className="size-4 animate-spin" /> : <PlusIcon data-icon="inline-start" />}
+                  Register
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => setShowRegister(false)} disabled={saving}>
+                  Cancel
+                </Button>
               </div>
             </form>
           ) : null}
 
-          {/* List */}
+          {loading ? (
+            <div className="flex items-center gap-3 rounded-lg border p-4 text-sm text-muted-foreground">
+              <Loader2Icon className="size-4 animate-spin" />
+              Loading pharmacies
+            </div>
+          ) : null}
+
+          {!loading && filtered.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+              {filter === "all" ? "No pharmacies have been registered yet." : `No ${filter} pharmacies found.`}
+            </div>
+          ) : null}
+
           {filtered.map((pharmacy) => (
-            <div key={pharmacy.id} className="flex items-center justify-between gap-4 rounded-lg border p-4">
-              <div className="flex items-center gap-4">
-                <div className="flex size-10 items-center justify-center rounded-full bg-secondary">
+            <div key={pharmacy.id} className="grid gap-4 rounded-lg border p-4 lg:grid-cols-[1fr_auto]">
+              <div className="flex gap-4">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary">
                   <Building2Icon className="size-5 text-muted-foreground" />
                 </div>
-                <div>
-                  <h3 className="font-semibold">{pharmacy.name}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {pharmacy.branchName}, {pharmacy.neighborhood} · {pharmacy.licenseNumber}
-                  </p>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-semibold">{branchLabel(pharmacy)}</h3>
+                    <Badge variant={pharmacy.isVerified ? "default" : "secondary"}>
+                      {pharmacy.isVerified ? "Verified" : "Pending"}
+                    </Badge>
+                    {pharmacy.supportsDelivery ? (
+                      <Badge variant="outline">
+                        <TruckIcon className="mr-1 size-3" />
+                        Delivery
+                      </Badge>
+                    ) : null}
+                  </div>
+                  <div className="mt-2 grid gap-1 text-sm text-muted-foreground sm:grid-cols-2">
+                    <span className="flex items-center gap-2">
+                      <MapPinIcon className="size-3.5" />
+                      {pharmacy.neighborhood}, {pharmacy.address}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <ShieldCheckIcon className="size-3.5" />
+                      {pharmacy.licenseNumber}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <PhoneIcon className="size-3.5" />
+                      {pharmacy.phone}
+                    </span>
+                    {pharmacy.email ? (
+                      <span className="flex items-center gap-2">
+                        <MailIcon className="size-3.5" />
+                        {pharmacy.email}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge variant={pharmacy.isVerified ? "default" : "secondary"}>
-                  {pharmacy.isVerified ? "Verified" : "Pending"}
-                </Badge>
+              <div className="flex items-center gap-2 lg:justify-end">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => toggleVerify(pharmacy.id)}
+                  onClick={() => toggleVerify(pharmacy)}
+                  disabled={updatingId === pharmacy.id}
                 >
-                  {pharmacy.isVerified ? (
-                    <>
-                      <XCircleIcon data-icon="inline-start" />
-                      Revoke
-                    </>
+                  {updatingId === pharmacy.id ? (
+                    <Loader2Icon className="size-4 animate-spin" />
+                  ) : pharmacy.isVerified ? (
+                    <XCircleIcon data-icon="inline-start" />
                   ) : (
-                    <>
-                      <CheckCircle2Icon data-icon="inline-start" />
-                      Verify
-                    </>
+                    <CheckCircle2Icon data-icon="inline-start" />
                   )}
+                  {pharmacy.isVerified ? "Revoke" : "Verify"}
                 </Button>
               </div>
             </div>

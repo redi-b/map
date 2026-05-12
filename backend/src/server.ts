@@ -4,6 +4,7 @@ import multipart from "@fastify/multipart"
 import sensible from "@fastify/sensible"
 import Fastify from "fastify"
 import { adherenceRoutes } from "./routes/adherence.js"
+import { adminRoutes } from "./routes/admin.js"
 import { assistantRoutes } from "./routes/assistant.js"
 import { authRoutes } from "./routes/auth.js"
 import { availabilityRoutes } from "./routes/availability.js"
@@ -35,6 +36,7 @@ await app.register(multipart, {
 })
 await app.register(healthRoutes)
 await app.register(adherenceRoutes, { prefix: "/api" })
+await app.register(adminRoutes, { prefix: "/api" })
 await app.register(assistantRoutes, { prefix: "/api" })
 await app.register(authRoutes, { prefix: "/api" })
 await app.register(availabilityRoutes, { prefix: "/api" })

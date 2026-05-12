@@ -188,6 +188,21 @@ export type DashboardSummary = {
   }>
 }
 
+export type AdminPharmacy = {
+  id: string
+  name: string
+  branchName: string | null
+  licenseNumber: string
+  address: string
+  neighborhood: string
+  phone: string
+  email: string | null
+  supportsDelivery: boolean
+  operatingHours: string | null
+  isVerified: boolean
+  createdAt: string
+}
+
 export type SearchFilters = {
   q: string
   neighborhood?: string
@@ -257,6 +272,59 @@ export async function getDashboardSummary() {
   }
 
   return response.json() as Promise<DashboardSummary>
+}
+
+export async function listAdminPharmacies() {
+  const response = await fetch(`${apiBaseUrl}/api/admin/pharmacies`, {
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to load pharmacies")
+  }
+
+  return response.json() as Promise<{ pharmacies: AdminPharmacy[] }>
+}
+
+export async function createAdminPharmacy(input: {
+  name: string
+  branchName?: string
+  licenseNumber: string
+  address: string
+  neighborhood: string
+  phone: string
+  email?: string
+  supportsDelivery: boolean
+  operatingHours?: string
+  isVerified?: boolean
+}) {
+  const response = await fetch(`${apiBaseUrl}/api/admin/pharmacies`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(input),
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to register pharmacy")
+  }
+
+  return response.json() as Promise<AdminPharmacy>
+}
+
+export async function verifyAdminPharmacy(id: string, isVerified: boolean) {
+  const response = await fetch(`${apiBaseUrl}/api/admin/pharmacies/${id}/verify`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ isVerified }),
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to update pharmacy")
+  }
+
+  return response.json() as Promise<AdminPharmacy>
 }
 
 export async function getTodayAdherence() {
