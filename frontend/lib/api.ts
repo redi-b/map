@@ -126,6 +126,17 @@ export type AvailabilityRequest = {
   createdAt: string
 }
 
+export type PatientAvailabilityRequest = {
+  id: string
+  medicineName: string
+  status: "pending" | "under_review" | "approved" | "rejected"
+  notes: string | null
+  isDelivery: boolean
+  proxyName: string | null
+  pharmacy: string
+  createdAt: string
+}
+
 export type SearchFilters = {
   q: string
   neighborhood?: string
@@ -425,6 +436,40 @@ export async function respondToAvailabilityRequest(input: {
 
   if (!response.ok) {
     throw new Error("Unable to update availability request")
+  }
+
+  return response.json()
+}
+
+export async function listPatientAvailabilityRequests() {
+  const response = await fetch(`${apiBaseUrl}/api/availability-requests`, {
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to load availability requests")
+  }
+
+  return response.json() as Promise<{ requests: PatientAvailabilityRequest[] }>
+}
+
+export async function createAvailabilityRequest(input: {
+  medicineName: string
+  notes?: string
+  isDelivery?: boolean
+  deliveryAddress?: string
+  proxyName?: string
+  proxyPhone?: string
+}) {
+  const response = await fetch(`${apiBaseUrl}/api/availability-requests`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(input),
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to submit availability request")
   }
 
   return response.json()

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { getNeighborhoods, searchMedicines, type MedicineSearchResult, type SearchFilters } from "@/lib/api"
+import { createAvailabilityRequest, getNeighborhoods, searchMedicines, type MedicineSearchResult, type SearchFilters } from "@/lib/api"
 
 const stockLabels = {
   in_stock: "In stock",
@@ -35,7 +35,9 @@ export function MedicineSearch() {
   const [deliveryOnly, setDeliveryOnly] = useState(false)
   const [underFiveHundred, setUnderFiveHundred] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [requesting, setRequesting] = useState(false)
   const [error, setError] = useState("")
+  const [requestMessage, setRequestMessage] = useState("")
   const [hasSearched, setHasSearched] = useState(false)
 
   // Load available neighborhoods for filter
@@ -98,6 +100,27 @@ export function MedicineSearch() {
     setDeliveryOnly(false)
     setUnderFiveHundred(false)
     setSelectedNeighborhood("")
+  }
+
+  async function sendAvailabilityRequest() {
+    const medicineName = (searchedQuery || query).trim()
+    if (!medicineName) return
+
+    setRequesting(true)
+    setError("")
+    setRequestMessage("")
+
+    try {
+      await createAvailabilityRequest({
+        medicineName,
+        notes: selectedNeighborhood ? `Preferred neighborhood: ${selectedNeighborhood}` : undefined,
+      })
+      setRequestMessage("Request sent. Pharmacies can now respond from their queue.")
+    } catch {
+      setError("Unable to send this request right now.")
+    } finally {
+      setRequesting(false)
+    }
   }
 
   return (
@@ -175,6 +198,7 @@ export function MedicineSearch() {
           </div>
 
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          {requestMessage ? <p className="text-sm text-primary">{requestMessage}</p> : null}
         </form>
 
         {/* Results header */}
@@ -273,8 +297,8 @@ export function MedicineSearch() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button className="w-full" disabled={!query.trim()}>
-              <SendIcon data-icon="inline-start" />
+            <Button className="w-full" disabled={!(searchedQuery || query).trim() || requesting} onClick={() => void sendAvailabilityRequest()}>
+              {requesting ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <SendIcon data-icon="inline-start" />}
               Send request
             </Button>
           </CardContent>

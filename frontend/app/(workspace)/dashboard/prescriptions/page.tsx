@@ -1,15 +1,17 @@
 "use client"
 
-import { CheckCircle2Icon, ClockIcon, FileImageIcon, Loader2Icon, UploadIcon, XCircleIcon } from "lucide-react"
-import { useEffect, useState } from "react"
+import { CheckCircle2Icon, ClockIcon, FileImageIcon, Loader2Icon, PackageSearchIcon, UploadIcon, XCircleIcon } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
   createPrescription,
+  listPatientAvailabilityRequests,
   listPrescriptionPharmacies,
   listPrescriptions,
+  type PatientAvailabilityRequest,
   type Prescription,
   type PrescriptionPharmacy,
   type PrescriptionStatus,
@@ -22,8 +24,20 @@ const statusConfig: Record<PrescriptionStatus, { label: string; icon: typeof Clo
   rejected: { label: "Rejected", icon: XCircleIcon, variant: "destructive" },
 }
 
+const requestStatusConfig = {
+  pending: { label: "Pending", icon: ClockIcon, variant: "secondary" },
+  under_review: { label: "Under review", icon: ClockIcon, variant: "secondary" },
+  approved: { label: "Available", icon: CheckCircle2Icon, variant: "default" },
+  rejected: { label: "Not available", icon: XCircleIcon, variant: "destructive" },
+} satisfies Record<PatientAvailabilityRequest["status"], { label: string; icon: typeof ClockIcon; variant: "default" | "secondary" | "outline" | "destructive" }>
+
+type PatientRequestItem =
+  | ({ type: "prescription" } & Prescription)
+  | ({ type: "availability" } & PatientAvailabilityRequest)
+
 export default function PrescriptionsPage() {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([])
+  const [availabilityRequests, setAvailabilityRequests] = useState<PatientAvailabilityRequest[]>([])
   const [pharmacies, setPharmacies] = useState<PrescriptionPharmacy[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -39,21 +53,29 @@ export default function PrescriptionsPage() {
 
   const selectedPharmacy = pharmacies.find((pharmacy) => pharmacy.id === pharmacyId)
   const deliveryUnavailable = selectedPharmacy ? !selectedPharmacy.supportsDelivery : false
+  const requestHistory = useMemo<PatientRequestItem[]>(() => {
+    return [
+      ...prescriptions.map((item) => ({ ...item, type: "prescription" as const })),
+      ...availabilityRequests.map((item) => ({ ...item, type: "availability" as const })),
+    ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  }, [availabilityRequests, prescriptions])
 
   async function loadPageData() {
     setLoading(true)
     setError("")
 
     try {
-      const [prescriptionsData, pharmaciesData] = await Promise.all([
+      const [prescriptionsData, pharmaciesData, availabilityData] = await Promise.all([
         listPrescriptions(),
         listPrescriptionPharmacies(),
+        listPatientAvailabilityRequests(),
       ])
       setPrescriptions(prescriptionsData.prescriptions)
+      setAvailabilityRequests(availabilityData.requests)
       setPharmacies(pharmaciesData.pharmacies)
       setPharmacyId((current) => current || pharmaciesData.pharmacies[0]?.id || "")
     } catch {
-      setError("Unable to load prescriptions right now.")
+      setError("Unable to load request history right now.")
     } finally {
       setLoading(false)
     }
@@ -130,8 +152,8 @@ export default function PrescriptionsPage() {
       {/* Prescriptions list */}
       <section className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="font-[var(--font-display)] text-xl font-semibold">Your prescriptions</h2>
-          <Badge variant="secondary">{prescriptions.length} total</Badge>
+          <h2 className="font-[var(--font-display)] text-xl font-semibold">Request history</h2>
+          <Badge variant="secondary">{requestHistory.length} total</Badge>
         </div>
 
         {error && !showUpload ? <p className="text-sm text-destructive">{error}</p> : null}
@@ -140,32 +162,34 @@ export default function PrescriptionsPage() {
           <Card>
             <CardContent className="flex items-center gap-3 p-6 text-sm text-muted-foreground">
               <Loader2Icon className="size-4 animate-spin" />
-              Loading prescriptions
+              Loading requests
             </CardContent>
           </Card>
         ) : null}
 
-        {!loading && prescriptions.length === 0 ? (
+        {!loading && requestHistory.length === 0 ? (
           <Card>
             <CardContent className="p-6 text-sm text-muted-foreground">
-              No prescriptions submitted yet.
+              No prescription or availability requests submitted yet.
             </CardContent>
           </Card>
         ) : null}
 
-        {prescriptions.map((rx) => {
-          const config = statusConfig[rx.status]
+        {requestHistory.map((item) => {
+          const config = item.type === "prescription" ? statusConfig[item.status] : requestStatusConfig[item.status]
           const StatusIcon = config.icon
 
           return (
-            <Card key={rx.id}>
+            <Card key={`${item.type}-${item.id}`}>
               <CardHeader className="flex flex-row items-start justify-between gap-4">
                 <div>
-                  <CardTitle>Prescription {rx.id.slice(0, 8)}</CardTitle>
+                  <CardTitle>
+                    {item.type === "prescription" ? `Prescription ${item.id.slice(0, 8)}` : item.medicineName}
+                  </CardTitle>
                   <CardDescription className="mt-1 flex items-center gap-2">
-                    {rx.pharmacy}
+                    {item.type === "prescription" ? item.pharmacy : item.pharmacy}
                     <span className="text-muted-foreground">·</span>
-                    {formatDate(rx.createdAt)}
+                    {formatDate(item.createdAt)}
                   </CardDescription>
                 </div>
                 <Badge variant={config.variant}>
@@ -174,12 +198,20 @@ export default function PrescriptionsPage() {
                 </Badge>
               </CardHeader>
               <CardContent className="flex items-center justify-between gap-3">
-                <p className="text-sm text-muted-foreground">{rx.notes || "Submitted for pharmacy review"}</p>
+                <p className="text-sm text-muted-foreground">
+                  {item.notes || (item.type === "prescription" ? "Submitted for pharmacy review" : "Waiting for pharmacy response")}
+                </p>
                 <div className="flex gap-1">
-                  {rx.imageUrl ? (
+                  {item.type === "prescription" && item.imageUrl ? (
                     <Badge variant="outline">
                       <FileImageIcon className="mr-1 size-3" />
                       Image stored
+                    </Badge>
+                  ) : null}
+                  {item.type === "availability" ? (
+                    <Badge variant="outline">
+                      <PackageSearchIcon className="mr-1 size-3" />
+                      Availability
                     </Badge>
                   ) : null}
                 </div>
