@@ -31,6 +31,9 @@ BETTER_AUTH_SECRET="replace-with-a-long-random-secret"
 BETTER_AUTH_URL="http://localhost:4000"
 FRONTEND_ORIGIN="http://localhost:3000"
 PORT="4000"
+PRESCRIPTION_IMAGE_KEY="replace-with-a-32-character-minimum-secret"
+PRESCRIPTION_STORAGE_PROVIDER="fs"
+PRESCRIPTION_STORAGE_DIR="storage/prescriptions"
 ```
 
 The frontend expects the API at:
@@ -79,3 +82,4 @@ npm run build
 - Deploy the frontend to Vercel and set `NEXT_PUBLIC_API_URL` to the backend URL.
 - Deploy the backend to Render and set the backend environment variables there.
 - Use Neon for the production PostgreSQL database.
+- Use object storage for prescription images in production. Set `PRESCRIPTION_STORAGE_PROVIDER="r2"` and configure `R2_BUCKET`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, and `R2_SECRET_ACCESS_KEY`. Use `R2_ENDPOINT` only when you need to override the default Cloudflare R2 S3 endpoint. Local development can keep `PRESCRIPTION_STORAGE_PROVIDER="fs"`.
