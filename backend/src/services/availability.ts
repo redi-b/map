@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm"
+import { and, desc, eq, isNull, or } from "drizzle-orm"
 import { db } from "../db/client.js"
 import {
   availabilityRequests,
@@ -81,7 +81,7 @@ export async function listPharmacyRequests(pharmacyId: string) {
     })
     .from(availabilityRequests)
     .innerJoin(profiles, eq(availabilityRequests.patientProfileId, profiles.id))
-    .where(eq(availabilityRequests.pharmacyId, pharmacyId))
+    .where(or(eq(availabilityRequests.pharmacyId, pharmacyId), isNull(availabilityRequests.pharmacyId)))
     .orderBy(desc(availabilityRequests.createdAt))
 
   return rows.map((r) => ({
@@ -109,7 +109,12 @@ export async function respondToRequest(
       medicineName: availabilityRequests.medicineName,
     })
     .from(availabilityRequests)
-    .where(and(eq(availabilityRequests.id, requestId), eq(availabilityRequests.pharmacyId, pharmacyId)))
+    .where(
+      and(
+        eq(availabilityRequests.id, requestId),
+        or(eq(availabilityRequests.pharmacyId, pharmacyId), isNull(availabilityRequests.pharmacyId)),
+      ),
+    )
     .limit(1)
 
   if (!request) {
@@ -133,8 +138,13 @@ export async function respondToRequest(
   const newStatus = input.response === "available" ? "approved" : input.response === "not_available" ? "rejected" : "under_review"
   await db
     .update(availabilityRequests)
-    .set({ status: newStatus, updatedAt: new Date() })
-    .where(and(eq(availabilityRequests.id, requestId), eq(availabilityRequests.pharmacyId, pharmacyId)))
+    .set({ pharmacyId, status: newStatus, updatedAt: new Date() })
+    .where(
+      and(
+        eq(availabilityRequests.id, requestId),
+        or(eq(availabilityRequests.pharmacyId, pharmacyId), isNull(availabilityRequests.pharmacyId)),
+      ),
+    )
 
   const responseLabel = input.response === "available" ? "is available" : input.response === "not_available" ? "is not available" : "has an alternative"
   await createNotification(

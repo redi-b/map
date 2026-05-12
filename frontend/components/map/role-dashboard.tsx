@@ -1,10 +1,10 @@
 "use client"
 
-import type { LucideIcon } from "lucide-react"
 import {
   ActivityIcon,
   BellIcon,
   ClipboardCheckIcon,
+  type LucideIcon,
   Loader2Icon,
   PackageSearchIcon,
   ShieldCheckIcon,
@@ -40,13 +40,13 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
-import { getCurrentUser, type CurrentUser } from "@/lib/api"
+import { getDashboardSummary, type DashboardIconName, type DashboardSummary } from "@/lib/api"
 
 type Kpi = {
   label: string
   value: string
   detail: string
-  icon: LucideIcon
+  icon: DashboardIconName
 }
 
 type RingDatum = {
@@ -56,67 +56,52 @@ type RingDatum = {
   color: string
 }
 
-const patientActivity = [
-  { day: "Mon", searches: 5, reminders: 2 },
-  { day: "Tue", searches: 7, reminders: 3 },
-  { day: "Wed", searches: 4, reminders: 3 },
-  { day: "Thu", searches: 8, reminders: 2 },
-  { day: "Fri", searches: 6, reminders: 3 },
-  { day: "Sat", searches: 3, reminders: 1 },
-  { day: "Sun", searches: 4, reminders: 2 },
-]
+const iconMap: Record<DashboardIconName, LucideIcon> = {
+  activity: ActivityIcon,
+  bell: BellIcon,
+  clipboard: ClipboardCheckIcon,
+  package: PackageSearchIcon,
+  shield: ShieldCheckIcon,
+  trend: TrendingUpIcon,
+  users: UsersIcon,
+}
 
-const pharmacyRequests = [
-  { day: "Mon", submitted: 18, completed: 11 },
-  { day: "Tue", submitted: 24, completed: 17 },
-  { day: "Wed", submitted: 19, completed: 16 },
-  { day: "Thu", submitted: 31, completed: 22 },
-  { day: "Fri", submitted: 28, completed: 20 },
-  { day: "Sat", submitted: 14, completed: 10 },
-  { day: "Sun", submitted: 9, completed: 7 },
-]
-
-const operationsTrend = [
-  { day: "Mon", requests: 82, verifications: 8 },
-  { day: "Tue", requests: 96, verifications: 11 },
-  { day: "Wed", requests: 88, verifications: 9 },
-  { day: "Thu", requests: 118, verifications: 14 },
-  { day: "Fri", requests: 126, verifications: 12 },
-  { day: "Sat", requests: 64, verifications: 6 },
-  { day: "Sun", requests: 52, verifications: 5 },
-]
-
-const careChartConfig = {
-  searches: { label: "Searches", color: "var(--chart-1)" },
-  reminders: { label: "Reminders", color: "var(--chart-2)" },
-} satisfies ChartConfig
-
-const pharmacyChartConfig = {
-  submitted: { label: "Submitted", color: "var(--chart-1)" },
-  completed: { label: "Completed", color: "var(--chart-2)" },
-} satisfies ChartConfig
-
-const operationsChartConfig = {
-  requests: { label: "Requests", color: "var(--chart-1)" },
-  verifications: { label: "Verifications", color: "var(--chart-3)" },
-} satisfies ChartConfig
+function buildChartConfig(chart: DashboardSummary["chart"]) {
+  return {
+    [chart.firstKey]: { label: chart.firstLabel, color: chart.firstColor },
+    [chart.secondKey]: { label: chart.secondLabel, color: chart.secondColor },
+  } satisfies ChartConfig
+}
 
 export function RoleDashboard() {
-  const [user, setUser] = useState<CurrentUser | null>(null)
+  const [summary, setSummary] = useState<DashboardSummary | null>(null)
+  const [error, setError] = useState("")
 
   useEffect(() => {
     let active = true
 
-    getCurrentUser().then((currentUser) => {
-      if (active) setUser(currentUser)
-    })
+    getDashboardSummary()
+      .then((dashboard) => {
+        if (active) setSummary(dashboard)
+      })
+      .catch(() => {
+        if (active) setError("Unable to load dashboard.")
+      })
 
     return () => {
       active = false
     }
   }, [])
 
-  if (!user?.profile) {
+  if (error) {
+    return (
+      <main className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-6">
+        <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">{error}</div>
+      </main>
+    )
+  }
+
+  if (!summary) {
     return (
       <main className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-6">
         <div className="flex items-center gap-3 text-muted-foreground">
@@ -127,19 +112,11 @@ export function RoleDashboard() {
     )
   }
 
-  if (user.profile.role === "pharmacist") {
-    return <PharmacistDashboard name={user.profile.fullName} />
-  }
-
-  if (user.profile.role === "admin") {
-    return <OperationsDashboard name={user.profile.fullName} />
-  }
-
-  return <PatientDashboard name={user.profile.fullName} />
+  return <DashboardView summary={summary} />
 }
 
 function KpiCard({ item }: { item: Kpi }) {
-  const Icon = item.icon
+  const Icon = iconMap[item.icon]
 
   return (
     <Card>
@@ -167,21 +144,24 @@ function DashboardHero({
   description,
   primaryHref,
   primaryLabel,
-  primaryIcon: PrimaryIcon,
+  primaryIcon,
   secondaryHref,
   secondaryLabel,
-  secondaryIcon: SecondaryIcon,
+  secondaryIcon,
 }: {
   badge: string
   title: string
   description: string
   primaryHref: string
   primaryLabel: string
-  primaryIcon: LucideIcon
+  primaryIcon: DashboardIconName
   secondaryHref: string
   secondaryLabel: string
-  secondaryIcon: LucideIcon
+  secondaryIcon: DashboardIconName
 }) {
+  const PrimaryIcon = iconMap[primaryIcon]
+  const SecondaryIcon = iconMap[secondaryIcon]
+
   return (
     <section className="rounded-xl border bg-card p-6">
       <Badge variant="secondary">{badge}</Badge>
@@ -341,10 +321,12 @@ function DetailList({
   title,
   description,
   rows,
+  empty,
 }: {
   title: string
   description: string
   rows: Array<{ label: string; detail: string; badge: string }>
+  empty: string
 }) {
   return (
     <Card>
@@ -353,6 +335,9 @@ function DetailList({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3">
+        {rows.length === 0 ? (
+          <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">{empty}</div>
+        ) : null}
         {rows.map((row) => (
           <div key={row.label} className="flex items-start justify-between gap-4 rounded-lg border p-3">
             <div>
@@ -367,208 +352,53 @@ function DetailList({
   )
 }
 
-function PatientDashboard({ name }: { name: string }) {
-  const kpis: Kpi[] = [
-    { label: "Today", value: "67%", detail: "2 of 3 doses marked", icon: ActivityIcon },
-    { label: "Nearby stock", value: "3", detail: "Matches within Bole and Kazanchis", icon: PackageSearchIcon },
-    { label: "Prescription", value: "1", detail: "Under pharmacy review", icon: ClipboardCheckIcon },
-    { label: "Reminders", value: "2", detail: "Scheduled for this evening", icon: BellIcon },
-  ]
+function DashboardView({ summary }: { summary: DashboardSummary }) {
+  const chartConfig = buildChartConfig(summary.chart)
 
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
-      <DashboardHero
-        badge="Patient dashboard"
-        title={`Good morning, ${name}`}
-        description="Search nearby medicine stock, keep prescriptions moving, and track the care tasks that need attention today."
-        primaryHref="/dashboard/find"
-        primaryLabel="Find medicine"
-        primaryIcon={PackageSearchIcon}
-        secondaryHref="/dashboard/prescriptions"
-        secondaryLabel="Upload prescription"
-        secondaryIcon={ClipboardCheckIcon}
-      />
+      <DashboardHero {...summary.hero} />
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {kpis.map((item) => (
+        {summary.kpis.map((item) => (
           <KpiCard key={item.label} item={item} />
         ))}
       </section>
       <section className="grid gap-4 lg:grid-cols-3">
-        <RechartsAreaPanel
-          title="Care activity"
-          description="Searches and reminders across the last 7 days."
-          config={careChartConfig}
-          data={patientActivity}
-          firstKey="searches"
-          secondKey="reminders"
-        />
+        {summary.chart.kind === "bar" ? (
+          <RechartsBarPanel
+            title={summary.chart.title}
+            description={summary.chart.description}
+            config={chartConfig}
+            data={summary.chart.data}
+            firstKey={summary.chart.firstKey}
+            secondKey={summary.chart.secondKey}
+          />
+        ) : (
+          <RechartsAreaPanel
+            title={summary.chart.title}
+            description={summary.chart.description}
+            config={chartConfig}
+            data={summary.chart.data}
+            firstKey={summary.chart.firstKey}
+            secondKey={summary.chart.secondKey}
+          />
+        )}
         <BklitRingPanel
-          title="Today&apos;s care plan"
-          description="Progress across the main tasks for today."
-          data={[
-            { label: "Doses", value: 2, maxValue: 3, color: "var(--chart-1)" },
-            { label: "Prescription", value: 1, maxValue: 1, color: "var(--chart-2)" },
-            { label: "Stock checks", value: 3, maxValue: 5, color: "var(--chart-3)" },
-          ]}
+          title={summary.ring.title}
+          description={summary.ring.description}
+          data={summary.ring.data}
         />
       </section>
       <section className="grid gap-4 lg:grid-cols-2">
-        <DetailList
-          title="Needs attention"
-          description="The next items to handle."
-          rows={[
-            { label: "Atorvastatin 20mg", detail: "Dose scheduled for 8:00 PM", badge: "Tonight" },
-            { label: "Prescription #RX-2048", detail: "Lion Pharmacy is reviewing the upload", badge: "Review" },
-            { label: "Metformin refill", detail: "Low supply based on current schedule", badge: "Refill" },
-          ]}
-        />
-        <DetailList
-          title="Nearby availability"
-          description="Useful results from recent searches."
-          rows={[
-            { label: "Lion Pharmacy", detail: "Amoxicillin 500mg, 420m away", badge: "In stock" },
-            { label: "Wudassie Pharmacy", detail: "Metformin 850mg, 900m away", badge: "Low stock" },
-            { label: "Red Cross Pharmacy", detail: "Insulin N, delivery available", badge: "Delivery" },
-          ]}
-        />
-      </section>
-    </main>
-  )
-}
-
-function PharmacistDashboard({ name }: { name: string }) {
-  const kpis: Kpi[] = [
-    { label: "Total SKUs", value: "1,240", detail: "Across active branch inventory", icon: ActivityIcon },
-    { label: "Low stock", value: "14", detail: "Need reorder review", icon: PackageSearchIcon },
-    { label: "Pending", value: "12", detail: "Requests waiting on response", icon: BellIcon },
-    { label: "Filled today", value: "28", detail: "Completed pickup or delivery", icon: ClipboardCheckIcon },
-  ]
-
-  return (
-    <main className="flex flex-col gap-6 p-4 md:p-6">
-      <DashboardHero
-        badge="Pharmacy dashboard"
-        title={`Inventory desk, ${name}`}
-        description="Keep branch stock current, prioritize requests, and spot demand changes before patients call branch by branch."
-        primaryHref="/dashboard/pharmacy/inventory"
-        primaryLabel="Manage inventory"
-        primaryIcon={ActivityIcon}
-        secondaryHref="/dashboard/pharmacy/requests"
-        secondaryLabel="Review requests"
-        secondaryIcon={BellIcon}
-      />
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {kpis.map((item) => (
-          <KpiCard key={item.label} item={item} />
+        {summary.lists.map((list) => (
+          <DetailList
+            key={list.title}
+            title={list.title}
+            description={list.description}
+            rows={list.rows}
+            empty={list.empty}
+          />
         ))}
-      </section>
-      <section className="grid gap-4 lg:grid-cols-3">
-        <RechartsBarPanel
-          title="Request flow"
-          description="Submitted versus completed prescription requests."
-          config={pharmacyChartConfig}
-          data={pharmacyRequests}
-          firstKey="submitted"
-          secondKey="completed"
-        />
-        <BklitRingPanel
-          title="Stock health"
-          description="Current inventory readiness by category."
-          data={[
-            { label: "Core medicine", value: 88, maxValue: 100, color: "var(--chart-1)" },
-            { label: "Chronic care", value: 72, maxValue: 100, color: "var(--chart-2)" },
-            { label: "Antibiotics", value: 61, maxValue: 100, color: "var(--chart-4)" },
-          ]}
-        />
-      </section>
-      <section className="grid gap-4 lg:grid-cols-2">
-        <DetailList
-          title="Request queue"
-          description="Requests that need a branch response."
-          rows={[
-            { label: "Abebe Bikila", detail: "Amoxicillin 500mg prescription", badge: "Urgent" },
-            { label: "Hana Tefera", detail: "Insulin availability confirmation", badge: "Pending" },
-            { label: "Selam Tesfaye", detail: "Delivery estimate requested", badge: "Estimate" },
-          ]}
-        />
-        <DetailList
-          title="Inventory watch"
-          description="Items close to reorder or expiry limits."
-          rows={[
-            { label: "Metformin 850mg", detail: "12 units remaining", badge: "Low" },
-            { label: "Paracetamol 500mg", detail: "Expiry date already passed", badge: "Expired" },
-            { label: "Omeprazole 20mg", detail: "Demand increased this week", badge: "Watch" },
-          ]}
-        />
-      </section>
-    </main>
-  )
-}
-
-function OperationsDashboard({ name }: { name: string }) {
-  const kpis: Kpi[] = [
-    { label: "Pharmacies", value: "38", detail: "Registered branches", icon: ShieldCheckIcon },
-    { label: "Awaiting review", value: "6", detail: "Verification queue", icon: UsersIcon },
-    { label: "Active accounts", value: "412", detail: "Patients and caregivers", icon: ActivityIcon },
-    { label: "Network fill rate", value: "78%", detail: "Requests with confirmed stock", icon: TrendingUpIcon },
-  ]
-
-  return (
-    <main className="flex flex-col gap-6 p-4 md:p-6">
-      <DashboardHero
-        badge="Operations dashboard"
-        title={`Operations review, ${name}`}
-        description="Monitor pharmacy participation, request flow, and trust signals across the medicine access network."
-        primaryHref="/dashboard/pharmacy/verification"
-        primaryLabel="Verify pharmacies"
-        primaryIcon={ShieldCheckIcon}
-        secondaryHref="/dashboard/pharmacy/requests"
-        secondaryLabel="Monitor requests"
-        secondaryIcon={UsersIcon}
-      />
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {kpis.map((item) => (
-          <KpiCard key={item.label} item={item} />
-        ))}
-      </section>
-      <section className="grid gap-4 lg:grid-cols-3">
-        <RechartsAreaPanel
-          title="Network activity"
-          description="Requests and pharmacy verification work by day."
-          config={operationsChartConfig}
-          data={operationsTrend}
-          firstKey="requests"
-          secondKey="verifications"
-        />
-        <BklitRingPanel
-          title="Network readiness"
-          description="Coverage signals for the operating network."
-          data={[
-            { label: "Verified", value: 32, maxValue: 38, color: "var(--chart-1)" },
-            { label: "Responsive", value: 29, maxValue: 38, color: "var(--chart-2)" },
-            { label: "Delivery ready", value: 21, maxValue: 38, color: "var(--chart-3)" },
-          ]}
-        />
-      </section>
-      <section className="grid gap-4 lg:grid-cols-2">
-        <DetailList
-          title="Verification queue"
-          description="Branches that need final review."
-          rows={[
-            { label: "Medhanialem Pharmacy", detail: "License uploaded, address check pending", badge: "Address" },
-            { label: "Bole HealthPlus", detail: "Owner profile needs confirmation", badge: "Owner" },
-            { label: "Arada Unity Pharma", detail: "Inventory sample submitted", badge: "Stock" },
-          ]}
-        />
-        <DetailList
-          title="Network watch"
-          description="Signals that may need follow-up."
-          rows={[
-            { label: "Bole sub-city", detail: "Higher antibiotic demand this week", badge: "Demand" },
-            { label: "Kazanchis", detail: "Two requests missed response target", badge: "SLA" },
-            { label: "Arada", detail: "Delivery coverage below target", badge: "Coverage" },
-          ]}
-        />
       </section>
     </main>
   )

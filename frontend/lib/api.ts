@@ -137,6 +137,57 @@ export type PatientAvailabilityRequest = {
   createdAt: string
 }
 
+export type DashboardIconName = "activity" | "bell" | "clipboard" | "package" | "shield" | "trend" | "users"
+
+export type DashboardSummary = {
+  role: UserRole
+  hero: {
+    badge: string
+    title: string
+    description: string
+    primaryHref: string
+    primaryLabel: string
+    primaryIcon: DashboardIconName
+    secondaryHref: string
+    secondaryLabel: string
+    secondaryIcon: DashboardIconName
+  }
+  kpis: Array<{
+    label: string
+    value: string
+    detail: string
+    icon: DashboardIconName
+  }>
+  chart: {
+    title: string
+    description: string
+    kind: "area" | "bar"
+    firstKey: string
+    secondKey: string
+    firstLabel: string
+    secondLabel: string
+    firstColor: string
+    secondColor: string
+    data: Array<Record<string, string | number>>
+  }
+  ring: {
+    title: string
+    description: string
+    data: Array<{
+      label: string
+      value: number
+      maxValue: number
+      color: string
+    }>
+  }
+  lists: Array<{
+    title: string
+    description: string
+    rows: Array<{ label: string; detail: string; badge: string }>
+    empty: string
+  }>
+}
+
 export type SearchFilters = {
   q: string
   neighborhood?: string
@@ -194,6 +245,18 @@ export async function getCurrentAccess() {
   }
 
   return response.json() as Promise<CurrentAccess>
+}
+
+export async function getDashboardSummary() {
+  const response = await fetch(`${apiBaseUrl}/api/dashboard/summary`, {
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to load dashboard")
+  }
+
+  return response.json() as Promise<DashboardSummary>
 }
 
 export async function getTodayAdherence() {

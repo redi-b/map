@@ -8,6 +8,7 @@ import { assistantRoutes } from "./routes/assistant.js"
 import { authRoutes } from "./routes/auth.js"
 import { availabilityRoutes } from "./routes/availability.js"
 import { catalogRoutes } from "./routes/catalog.js"
+import { dashboardRoutes } from "./routes/dashboard.js"
 import { healthRoutes } from "./routes/health.js"
 import { inventoryRoutes } from "./routes/inventory.js"
 import { notificationRoutes } from "./routes/notification.js"
@@ -38,6 +39,7 @@ await app.register(assistantRoutes, { prefix: "/api" })
 await app.register(authRoutes, { prefix: "/api" })
 await app.register(availabilityRoutes, { prefix: "/api" })
 await app.register(catalogRoutes, { prefix: "/api" })
+await app.register(dashboardRoutes, { prefix: "/api" })
 await app.register(inventoryRoutes, { prefix: "/api" })
 await app.register(notificationRoutes, { prefix: "/api" })
 await app.register(prescriptionRoutes, { prefix: "/api" })
