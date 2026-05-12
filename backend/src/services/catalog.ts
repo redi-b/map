@@ -1,7 +1,7 @@
-import { and, desc, eq, ilike, lte, ne, or } from "drizzle-orm"
+import { and, asc, desc, eq, ilike, lte, ne, or } from "drizzle-orm"
 import { db } from "../db/client.js"
 import { inventoryItems, medicines, pharmacies } from "../db/schema.js"
-import type { MedicineSearchQuery } from "../validators/search.js"
+import type { MedicineSearchQuery, MedicineSuggestionQuery } from "../validators/search.js"
 
 function formatMedicineName(row: { name: string; form: string; strength: string | null }) {
   return [row.name, row.form, row.strength].filter(Boolean).join(" ")
@@ -127,6 +127,45 @@ export async function searchMedicines(query: MedicineSearchQuery) {
       updatedAt: formatUpdatedAt(row.updatedAt),
     })),
   }
+}
+
+export async function getMedicineSuggestions(query: MedicineSuggestionQuery) {
+  const normalized = query.q.trim()
+
+  if (normalized.length < 2) {
+    return []
+  }
+
+  const pattern = `%${normalized}%`
+  const rows = await db
+    .selectDistinct({
+      name: medicines.name,
+      form: medicines.form,
+      strength: medicines.strength,
+      category: medicines.category,
+    })
+    .from(medicines)
+    .innerJoin(inventoryItems, eq(inventoryItems.medicineId, medicines.id))
+    .innerJoin(pharmacies, eq(inventoryItems.pharmacyId, pharmacies.id))
+    .where(
+      and(
+        eq(pharmacies.isVerified, true),
+        or(
+          ilike(medicines.name, pattern),
+          ilike(medicines.form, pattern),
+          ilike(medicines.strength, pattern),
+          ilike(medicines.category, pattern),
+        ),
+      ),
+    )
+    .orderBy(asc(medicines.name))
+    .limit(query.limit)
+
+  return rows.map((row) => ({
+    medicine: formatMedicineName(row),
+    category: row.category,
+    query: row.name,
+  }))
 }
 
 /** Return the list of unique neighborhoods that have pharmacies. */

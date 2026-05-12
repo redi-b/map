@@ -9,4 +9,10 @@ export const medicineSearchQuery = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(25),
 })
 
+export const medicineSuggestionQuery = z.object({
+  q: z.string().default(""),
+  limit: z.coerce.number().int().min(1).max(10).default(8),
+})
+
 export type MedicineSearchQuery = z.infer<typeof medicineSearchQuery>
+export type MedicineSuggestionQuery = z.infer<typeof medicineSuggestionQuery>

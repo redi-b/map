@@ -6,7 +6,15 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { createAvailabilityRequest, getNeighborhoods, searchMedicines, type MedicineSearchResult, type SearchFilters } from "@/lib/api"
+import {
+  createAvailabilityRequest,
+  getMedicineSuggestions,
+  getNeighborhoods,
+  searchMedicines,
+  type MedicineSearchResult,
+  type MedicineSuggestion,
+  type SearchFilters,
+} from "@/lib/api"
 
 const stockLabels = {
   in_stock: "In stock",
@@ -27,6 +35,8 @@ function formatDistance(distanceMeters: number) {
 
 export function MedicineSearch() {
   const [query, setQuery] = useState("")
+  const [suggestions, setSuggestions] = useState<MedicineSuggestion[]>([])
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false)
   const [searchedQuery, setSearchedQuery] = useState("")
   const [results, setResults] = useState<MedicineSearchResult[]>([])
   const [neighborhoods, setNeighborhoods] = useState<string[]>([])
@@ -48,6 +58,30 @@ export function MedicineSearch() {
         // Non-critical — filters still work without this
       })
   }, [])
+
+  useEffect(() => {
+    const trimmedQuery = query.trim()
+
+    if (trimmedQuery.length < 2) {
+      return
+    }
+
+    let active = true
+    const timeout = window.setTimeout(() => {
+      getMedicineSuggestions(trimmedQuery)
+        .then((data) => {
+          if (active) setSuggestions(data.suggestions)
+        })
+        .catch(() => {
+          if (active) setSuggestions([])
+        })
+    }, 180)
+
+    return () => {
+      active = false
+      window.clearTimeout(timeout)
+    }
+  }, [query])
 
   const filteredResults = useMemo(() => {
     return results.filter((item) => {
@@ -83,6 +117,7 @@ export function MedicineSearch() {
       setResults(response.results)
       setSearchedQuery(trimmedQuery)
       setHasSearched(true)
+      setSuggestionsOpen(false)
     } catch {
       setError("Search is temporarily unavailable. Make sure the API is running.")
     } finally {
@@ -133,9 +168,45 @@ export function MedicineSearch() {
             <Input
               className="h-12 pl-10"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                const nextQuery = event.target.value
+                setQuery(nextQuery)
+                if (nextQuery.trim().length < 2) setSuggestions([])
+                setSuggestionsOpen(true)
+              }}
+              onFocus={() => setSuggestionsOpen(true)}
+              onBlur={() => window.setTimeout(() => setSuggestionsOpen(false), 100)}
               placeholder="Search by medicine name, brand, or category"
+              aria-autocomplete="list"
+              aria-expanded={suggestionsOpen && suggestions.length > 0}
+              aria-controls="medicine-suggestions"
             />
+            {suggestionsOpen && suggestions.length > 0 ? (
+              <div
+                id="medicine-suggestions"
+                role="listbox"
+                className="absolute left-0 right-0 top-14 z-20 overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-md"
+              >
+                {suggestions.map((suggestion) => (
+                  <button
+                    key={`${suggestion.medicine}-${suggestion.category}`}
+                    type="button"
+                    role="option"
+                    aria-selected={suggestion.query === query}
+                    className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition hover:bg-secondary"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      setQuery(suggestion.query)
+                      setSuggestionsOpen(false)
+                      void runSearch(suggestion.query)
+                    }}
+                  >
+                    <span className="font-medium">{suggestion.medicine}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">{suggestion.category}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
 
           {/* Filters row */}

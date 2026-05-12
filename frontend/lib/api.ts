@@ -37,6 +37,12 @@ export type MedicineSearchResult = {
   updatedAt: string
 }
 
+export type MedicineSuggestion = {
+  medicine: string
+  category: string
+  query: string
+}
+
 export type CurrentAccess = {
   role: UserRole
   areas: string[]
@@ -261,6 +267,19 @@ export async function getNeighborhoods() {
   }
 
   return response.json() as Promise<{ neighborhoods: string[] }>
+}
+
+export async function getMedicineSuggestions(q: string) {
+  const params = new URLSearchParams({ q })
+  const response = await fetch(`${apiBaseUrl}/api/medicines/suggestions?${params}`, {
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to load suggestions")
+  }
+
+  return response.json() as Promise<{ suggestions: MedicineSuggestion[] }>
 }
 
 export async function getCurrentAccess() {
