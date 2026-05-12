@@ -10,6 +10,8 @@ import {
   LogOutIcon,
   PackageSearchIcon,
   ShieldCheckIcon,
+  type LucideIcon,
+  UsersIcon,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
@@ -42,21 +44,29 @@ import { authClient } from "@/lib/auth-client"
 import type { CurrentUser, UserRole } from "@/lib/api"
 import { ThemeSubmenu } from "./theme-switcher"
 
-const overviewItems = [
+type SidebarNavItem = {
+  label: string
+  icon: LucideIcon
+  href: string
+  badge?: string
+}
+
+const overviewItems: SidebarNavItem[] = [
   { label: "Dashboard", icon: LayoutDashboardIcon, href: "/dashboard" },
 ]
 
-const patientItems = [
+const patientItems: SidebarNavItem[] = [
   { label: "Find Medicine", icon: PackageSearchIcon, href: "/dashboard/find" },
   { label: "Prescriptions", icon: ClipboardListIcon, href: "/dashboard/prescriptions" },
   { label: "Adherence", icon: ActivityIcon, href: "/dashboard/adherence" },
   { label: "Medication Guide", icon: BotIcon, href: "/dashboard/assistant" },
 ]
 
-const pharmacyItems = [
+const pharmacyItems: SidebarNavItem[] = [
   { label: "Inventory", icon: PackageSearchIcon, href: "/dashboard/pharmacy/inventory" },
-  { label: "Requests", icon: BellIcon, href: "/dashboard/pharmacy/requests", badge: "12" },
+  { label: "Requests", icon: BellIcon, href: "/dashboard/pharmacy/requests" },
   { label: "Verification", icon: ShieldCheckIcon, href: "/dashboard/pharmacy/verification" },
+  { label: "Users", icon: UsersIcon, href: "/dashboard/admin/users" },
 ]
 
 function getInitials(name?: string | null, email?: string) {

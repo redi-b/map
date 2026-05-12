@@ -18,6 +18,7 @@ export const accessByRole: Record<UserRole, string[]> = {
   admin: [
     "/dashboard",
     "/dashboard/pharmacy/verification",
+    "/dashboard/admin/users",
   ],
 }
 
@@ -28,7 +29,7 @@ export function isUserRole(value: unknown): value is UserRole {
 export const roleHomePath: Record<UserRole, string> = {
   patient: "/dashboard",
   pharmacist: "/dashboard/pharmacy/inventory",
-  admin: "/dashboard/pharmacy/verification",
+  admin: "/dashboard",
 }
 
 export function getRoleHomePath(role?: UserRole | null) {

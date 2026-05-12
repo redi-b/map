@@ -203,6 +203,19 @@ export type AdminPharmacy = {
   createdAt: string
 }
 
+export type AdminUser = {
+  id: string
+  authUserId: string
+  fullName: string
+  phone: string | null
+  role: UserRole
+  isActive: boolean
+  createdAt: string
+  email: string
+  accountName: string
+  isCurrentUser: boolean
+}
+
 export type SearchFilters = {
   q: string
   neighborhood?: string
@@ -325,6 +338,33 @@ export async function verifyAdminPharmacy(id: string, isVerified: boolean) {
   }
 
   return response.json() as Promise<AdminPharmacy>
+}
+
+export async function listAdminUsers() {
+  const response = await fetch(`${apiBaseUrl}/api/admin/users`, {
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to load users")
+  }
+
+  return response.json() as Promise<{ users: AdminUser[] }>
+}
+
+export async function updateAdminUser(id: string, input: { role?: UserRole; isActive?: boolean }) {
+  const response = await fetch(`${apiBaseUrl}/api/admin/users/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(input),
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to update user")
+  }
+
+  return response.json() as Promise<AdminUser>
 }
 
 export async function getTodayAdherence() {

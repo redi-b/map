@@ -17,5 +17,13 @@ export const verifyAdminPharmacySchema = z.object({
   isVerified: z.boolean(),
 })
 
+export const updateAdminUserSchema = z.object({
+  role: z.enum(["patient", "pharmacist", "admin"]).optional(),
+  isActive: z.boolean().optional(),
+}).refine((input) => input.role !== undefined || input.isActive !== undefined, {
+  message: "At least one field is required",
+})
+
 export type CreateAdminPharmacyInput = z.infer<typeof createAdminPharmacySchema>
 export type VerifyAdminPharmacyInput = z.infer<typeof verifyAdminPharmacySchema>
+export type UpdateAdminUserInput = z.infer<typeof updateAdminUserSchema>

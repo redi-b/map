@@ -2,11 +2,14 @@ import type { FastifyPluginAsync } from "fastify"
 import { requireProfile } from "../lib/auth-context.js"
 import {
   createAdminPharmacy,
+  listAdminUsers,
   listAdminPharmacies,
+  updateAdminUser,
   verifyAdminPharmacy,
 } from "../services/admin.js"
 import {
   createAdminPharmacySchema,
+  updateAdminUserSchema,
   verifyAdminPharmacySchema,
 } from "../validators/admin.js"
 
@@ -46,5 +49,47 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     }
 
     return pharmacy
+  })
+
+  app.get("/admin/users", async (request, reply) => {
+    const context = await requireProfile(request, reply, ["admin"])
+    if (!context) return
+
+    const users = await listAdminUsers()
+    return {
+      users: users.map((user) => ({
+        ...user,
+        isCurrentUser: user.id === context.profile.id,
+      })),
+    }
+  })
+
+  app.patch("/admin/users/:id", async (request, reply) => {
+    const context = await requireProfile(request, reply, ["admin"])
+    if (!context) return
+
+    const { id } = request.params as { id: string }
+    const parsed = updateAdminUserSchema.safeParse(request.body)
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "Invalid data", details: parsed.error.flatten().fieldErrors })
+    }
+
+    if (id === context.profile.id && parsed.data.isActive === false) {
+      return reply.status(400).send({ error: "You cannot deactivate your own account" })
+    }
+
+    if (id === context.profile.id && parsed.data.role && parsed.data.role !== context.profile.role) {
+      return reply.status(400).send({ error: "You cannot change your own role" })
+    }
+
+    const user = await updateAdminUser(id, parsed.data)
+    if (!user) {
+      return reply.status(404).send({ error: "User not found" })
+    }
+
+    return {
+      ...user,
+      isCurrentUser: user.id === context.profile.id,
+    }
   })
 }
