@@ -24,24 +24,74 @@ function formatUpdatedAt(date: Date) {
   return `${days}d ago`
 }
 
-/**
- * Placeholder distance estimate. In production, this would use lat/lng
- * from the user's location and the pharmacy's coordinates.
- */
-function estimateDistanceMeters(neighborhood: string) {
-  const distanceByNeighborhood: Record<string, number> = {
-    bole: 420,
-    kazanchis: 900,
-    piazza: 1800,
-    arada: 2100,
-    "4 kilo": 1500,
-    "6 kilo": 1700,
-    megenagna: 1200,
-    mexico: 1400,
-    sarbet: 800,
+type Coordinates = {
+  latitude: number
+  longitude: number
+}
+
+const neighborhoodCenters: Record<string, Coordinates> = {
+  bole: { latitude: 8.9965, longitude: 38.7898 },
+  kazanchis: { latitude: 9.0183, longitude: 38.7636 },
+  piazza: { latitude: 9.0357, longitude: 38.7513 },
+  arada: { latitude: 9.035, longitude: 38.752 },
+  "4 kilo": { latitude: 9.0335, longitude: 38.7612 },
+  "6 kilo": { latitude: 9.042, longitude: 38.761 },
+  megenagna: { latitude: 9.0121, longitude: 38.8012 },
+  mexico: { latitude: 9.0104, longitude: 38.7436 },
+  sarbet: { latitude: 8.9956, longitude: 38.7357 },
+}
+
+const defaultSearchCenter = neighborhoodCenters.bole
+
+function parseCoordinates(latitude: string | null, longitude: string | null) {
+  const parsedLatitude = Number(latitude)
+  const parsedLongitude = Number(longitude)
+
+  if (!Number.isFinite(parsedLatitude) || !Number.isFinite(parsedLongitude)) {
+    return null
   }
 
-  return distanceByNeighborhood[neighborhood.toLowerCase()] ?? 1500
+  return { latitude: parsedLatitude, longitude: parsedLongitude }
+}
+
+function getNeighborhoodCenter(neighborhood?: string | null) {
+  if (!neighborhood) return null
+  return neighborhoodCenters[neighborhood.toLowerCase()] ?? null
+}
+
+function haversineMeters(origin: Coordinates, destination: Coordinates) {
+  const earthRadiusMeters = 6_371_000
+  const toRadians = (value: number) => (value * Math.PI) / 180
+  const latitudeDelta = toRadians(destination.latitude - origin.latitude)
+  const longitudeDelta = toRadians(destination.longitude - origin.longitude)
+  const originLatitude = toRadians(origin.latitude)
+  const destinationLatitude = toRadians(destination.latitude)
+
+  const a =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(originLatitude) *
+      Math.cos(destinationLatitude) *
+      Math.sin(longitudeDelta / 2) ** 2
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+  return Math.round(earthRadiusMeters * c)
+}
+
+function estimateDistanceMeters(row: {
+  latitude: string | null
+  longitude: string | null
+  neighborhood: string
+}, originNeighborhood?: string) {
+  const origin = getNeighborhoodCenter(originNeighborhood) ?? defaultSearchCenter
+  const destination =
+    parseCoordinates(row.latitude, row.longitude) ??
+    getNeighborhoodCenter(row.neighborhood)
+
+  if (!destination) {
+    return 1500
+  }
+
+  return haversineMeters(origin, destination)
 }
 
 export async function searchMedicines(query: MedicineSearchQuery) {
@@ -89,6 +139,8 @@ export async function searchMedicines(query: MedicineSearchQuery) {
       pharmacy: pharmacies.name,
       pharmacyBranch: pharmacies.branchName,
       neighborhood: pharmacies.neighborhood,
+      latitude: pharmacies.latitude,
+      longitude: pharmacies.longitude,
       unitPriceEtb: inventoryItems.unitPriceEtb,
       stockStatus: inventoryItems.stockStatus,
       quantity: inventoryItems.quantity,
@@ -117,10 +169,14 @@ export async function searchMedicines(query: MedicineSearchQuery) {
       }),
       category: row.category,
       pharmacy: row.pharmacyBranch
-        ? `${row.pharmacy} — ${row.pharmacyBranch}`
+        ? `${row.pharmacy} - ${row.pharmacyBranch}`
         : row.pharmacy,
       neighborhood: row.neighborhood,
-      distanceMeters: estimateDistanceMeters(row.neighborhood),
+      distanceMeters: estimateDistanceMeters({
+        latitude: row.latitude,
+        longitude: row.longitude,
+        neighborhood: row.neighborhood,
+      }, query.neighborhood),
       priceEtb: Number(row.unitPriceEtb),
       stockStatus: row.stockStatus,
       deliveryAvailable: row.quantity > 0,
