@@ -25,6 +25,7 @@ import {
   type AdminUser,
   type UserRole,
 } from "@/lib/api"
+import { toast } from "@/lib/toast"
 
 const roleLabels: Record<UserRole, string> = {
   patient: "Patient",
@@ -150,8 +151,10 @@ export default function AdminUsersPage() {
       })
       setForm({ ...emptyForm, pharmacyId: pharmacies[0]?.id || "" })
       setShowCreate(false)
+      toast.success("User created", "Share the temporary password before leaving this page.")
     } catch {
       setError("Unable to create user. Check the account details and try again.")
+      toast.error("User not created", "Check the account details and try again.")
     } finally {
       setSaving(false)
     }
@@ -164,8 +167,10 @@ export default function AdminUsersPage() {
     try {
       const updated = await updateAdminUser(user.id, input)
       setUsers((current) => current.map((item) => (item.id === updated.id ? updated : item)))
+      toast.success("User updated", updated.fullName)
     } catch {
       setError("Unable to update this user.")
+      toast.error("User not updated", "Try again in a moment.")
     } finally {
       setUpdatingId("")
     }
@@ -176,6 +181,7 @@ export default function AdminUsersPage() {
       const pharmacyId = user.pharmacyId || pharmacies[0]?.id
       if (!pharmacyId) {
         setError("Create a pharmacy before assigning pharmacist access.")
+        toast.warning("No pharmacy available", "Create a pharmacy before assigning pharmacist access.")
         return
       }
       void updateUser(user, { role, pharmacyId })

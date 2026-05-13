@@ -24,6 +24,8 @@ import {
   verifyAdminPharmacy,
   type AdminPharmacy,
 } from "@/lib/api"
+import { toast } from "@/lib/toast"
+import { cn } from "@/lib/utils"
 
 type Filter = "all" | "verified" | "pending"
 
@@ -124,8 +126,10 @@ export default function PharmacyVerificationPage() {
     try {
       const updated = await verifyAdminPharmacy(pharmacy.id, !pharmacy.isVerified)
       setPharmacies((current) => current.map((item) => (item.id === updated.id ? updated : item)))
+      toast.success(updated.isVerified ? "Pharmacy verified" : "Verification removed", branchLabel(updated))
     } catch {
       setError("Unable to update pharmacy verification.")
+      toast.error("Verification not updated", "Try again in a moment.")
     } finally {
       setUpdatingId("")
     }
@@ -161,8 +165,10 @@ export default function PharmacyVerificationPage() {
       })
       setForm(emptyForm)
       setShowRegister(false)
+      toast.success("Pharmacy registered", "The primary pharmacist login was created.")
     } catch {
       setError("Unable to register pharmacy. Check the required fields and try again.")
+      toast.error("Pharmacy not registered", "Check the required fields and try again.")
     } finally {
       setSaving(false)
     }
@@ -212,7 +218,13 @@ export default function PharmacyVerificationPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex gap-2">
               {(["all", "verified", "pending"] as const).map((item) => (
-                <Button key={item} variant={filter === item ? "secondary" : "outline"} size="sm" onClick={() => setFilter(item)}>
+                <Button
+                  key={item}
+                  variant={filter === item ? "secondary" : "outline"}
+                  size="sm"
+                  className={cn(filter === item && "border-primary/60 bg-primary/15 text-primary shadow-[inset_0_0_0_1px_var(--primary)] hover:bg-primary/20 dark:bg-primary/20 dark:text-foreground")}
+                  onClick={() => setFilter(item)}
+                >
                   {item === "all" ? "All" : item === "verified" ? "Verified" : "Pending"}
                 </Button>
               ))}

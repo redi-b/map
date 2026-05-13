@@ -1,36 +1,37 @@
 import { z } from "zod"
+import { cleanString } from "../lib/sanitize.js"
 
 export const createPrescriptionSchema = z.object({
   pharmacyId: z.string().uuid(),
-  notes: z.string().max(500).optional(),
+  notes: cleanString(z.string().max(500)).optional(),
   isDelivery: z.boolean().default(false),
-  deliveryAddress: z.string().max(200).optional(),
-  proxyName: z.string().max(100).optional(),
-  proxyPhone: z.string().max(20).optional(),
+  deliveryAddress: cleanString(z.string().max(200)).optional(),
+  proxyName: cleanString(z.string().max(100)).optional(),
+  proxyPhone: cleanString(z.string().max(20)).optional(),
 })
 
 export const reviewPrescriptionSchema = z.object({
   action: z.enum(["approve", "reject", "request_resubmit", "suggest_alternate"]),
-  instructions: z.string().max(500).optional(),
+  instructions: cleanString(z.string().max(500)).optional(),
   estimatedCostEtb: z.number().positive().optional(),
   alternativeMedicineId: z.string().uuid().optional(),
 })
 
 export const createAvailabilityRequestSchema = z.object({
   pharmacyId: z.string().uuid().optional().nullable(),
-  medicineName: z.string().min(1).max(200),
-  notes: z.string().max(500).optional(),
+  medicineName: cleanString(z.string().min(1).max(200)),
+  notes: cleanString(z.string().max(500)).optional(),
   isDelivery: z.boolean().default(false),
-  deliveryAddress: z.string().max(200).optional(),
-  proxyName: z.string().max(100).optional(),
-  proxyPhone: z.string().max(20).optional(),
+  deliveryAddress: cleanString(z.string().max(200)).optional(),
+  proxyName: cleanString(z.string().max(100)).optional(),
+  proxyPhone: cleanString(z.string().max(20)).optional(),
 })
 
 export const respondToRequestSchema = z.object({
   response: z.enum(["available", "not_available", "alternate"]),
-  alternativeMedicineName: z.string().max(200).optional(),
+  alternativeMedicineName: cleanString(z.string().max(200)).optional(),
   estimatedPriceEtb: z.number().positive().optional(),
-  notes: z.string().max(500).optional(),
+  notes: cleanString(z.string().max(500)).optional(),
 })
 
 export type CreatePrescriptionInput = z.infer<typeof createPrescriptionSchema>

@@ -1,8 +1,9 @@
 import { z } from "zod"
+import { cleanString } from "../lib/sanitize.js"
 
 export const medicineSearchQuery = z.object({
-  q: z.string().default(""),
-  neighborhood: z.string().optional(),
+  q: cleanString(z.string()).default(""),
+  neighborhood: cleanString(z.string()).optional(),
   inStock: z.coerce.boolean().optional(),
   delivery: z.coerce.boolean().optional(),
   maxPrice: z.coerce.number().positive().optional(),
@@ -10,7 +11,7 @@ export const medicineSearchQuery = z.object({
 })
 
 export const medicineSuggestionQuery = z.object({
-  q: z.string().default(""),
+  q: cleanString(z.string()).default(""),
   limit: z.coerce.number().int().min(1).max(10).default(8),
 })
 

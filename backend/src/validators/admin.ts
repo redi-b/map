@@ -1,19 +1,20 @@
 import { z } from "zod"
+import { cleanString } from "../lib/sanitize.js"
 
 export const createAdminPharmacySchema = z.object({
-  name: z.string().min(1).max(120),
-  branchName: z.string().max(120).optional(),
-  licenseNumber: z.string().min(1).max(80),
-  address: z.string().min(1).max(200),
-  neighborhood: z.string().min(1).max(120),
-  phone: z.string().min(1).max(30),
-  email: z.email().optional().or(z.literal("")),
+  name: cleanString(z.string().min(1).max(120)),
+  branchName: cleanString(z.string().max(120)).optional(),
+  licenseNumber: cleanString(z.string().min(1).max(80)),
+  address: cleanString(z.string().min(1).max(200)),
+  neighborhood: cleanString(z.string().min(1).max(120)),
+  phone: cleanString(z.string().min(1).max(30)),
+  email: cleanString(z.email()).optional().or(z.literal("")),
   supportsDelivery: z.boolean().default(false),
-  operatingHours: z.string().max(120).optional(),
+  operatingHours: cleanString(z.string().max(120)).optional(),
   isVerified: z.boolean().default(false),
-  primaryContactName: z.string().min(2).max(120),
-  primaryContactEmail: z.email(),
-  primaryContactPhone: z.string().max(30).optional(),
+  primaryContactName: cleanString(z.string().min(2).max(120)),
+  primaryContactEmail: cleanString(z.email()),
+  primaryContactPhone: cleanString(z.string().max(30)).optional(),
 })
 
 export const verifyAdminPharmacySchema = z.object({
@@ -29,9 +30,9 @@ export const updateAdminUserSchema = z.object({
 })
 
 export const createAdminUserSchema = z.object({
-  fullName: z.string().min(2).max(120),
-  email: z.email(),
-  phone: z.string().max(30).optional(),
+  fullName: cleanString(z.string().min(2).max(120)),
+  email: cleanString(z.email()),
+  phone: cleanString(z.string().max(30)).optional(),
   role: z.literal("pharmacist"),
   pharmacyId: z.string().uuid(),
 })

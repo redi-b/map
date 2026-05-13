@@ -15,6 +15,8 @@ import {
   type MedicineSuggestion,
   type SearchFilters,
 } from "@/lib/api"
+import { cn } from "@/lib/utils"
+import { toast } from "@/lib/toast"
 
 const stockLabels = {
   in_stock: "In stock",
@@ -47,7 +49,6 @@ export function MedicineSearch() {
   const [loading, setLoading] = useState(false)
   const [requesting, setRequesting] = useState(false)
   const [error, setError] = useState("")
-  const [requestMessage, setRequestMessage] = useState("")
   const [hasSearched, setHasSearched] = useState(false)
 
   // Load available neighborhoods for filter
@@ -143,16 +144,16 @@ export function MedicineSearch() {
 
     setRequesting(true)
     setError("")
-    setRequestMessage("")
 
     try {
       await createAvailabilityRequest({
         medicineName,
         notes: selectedNeighborhood ? `Preferred neighborhood: ${selectedNeighborhood}` : undefined,
       })
-      setRequestMessage("Request sent. Pharmacies can now respond from their queue.")
+      toast.success("Request sent", "Verified pharmacies can now respond from their queue.")
     } catch {
       setError("Unable to send this request right now.")
+      toast.error("Request not sent", "Try again in a moment.")
     } finally {
       setRequesting(false)
     }
@@ -232,6 +233,7 @@ export function MedicineSearch() {
               type="button"
               variant={inStockOnly ? "secondary" : "outline"}
               size="sm"
+              className={cn(inStockOnly && "border-primary/60 bg-primary/15 text-primary shadow-[inset_0_0_0_1px_var(--primary)] hover:bg-primary/20 dark:bg-primary/20 dark:text-foreground")}
               onClick={() => setInStockOnly((value) => !value)}
             >
               In stock
@@ -240,6 +242,7 @@ export function MedicineSearch() {
               type="button"
               variant={deliveryOnly ? "secondary" : "outline"}
               size="sm"
+              className={cn(deliveryOnly && "border-primary/60 bg-primary/15 text-primary shadow-[inset_0_0_0_1px_var(--primary)] hover:bg-primary/20 dark:bg-primary/20 dark:text-foreground")}
               onClick={() => setDeliveryOnly((value) => !value)}
             >
               Delivery
@@ -248,6 +251,7 @@ export function MedicineSearch() {
               type="button"
               variant={underFiveHundred ? "secondary" : "outline"}
               size="sm"
+              className={cn(underFiveHundred && "border-primary/60 bg-primary/15 text-primary shadow-[inset_0_0_0_1px_var(--primary)] hover:bg-primary/20 dark:bg-primary/20 dark:text-foreground")}
               onClick={() => setUnderFiveHundred((value) => !value)}
             >
               Under 500 ETB
@@ -269,7 +273,6 @@ export function MedicineSearch() {
           </div>
 
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
-          {requestMessage ? <p className="text-sm text-primary">{requestMessage}</p> : null}
         </form>
 
         {/* Results header */}

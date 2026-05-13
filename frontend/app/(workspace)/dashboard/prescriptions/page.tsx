@@ -16,6 +16,7 @@ import {
   type PrescriptionPharmacy,
   type PrescriptionStatus,
 } from "@/lib/api"
+import { toast } from "@/lib/toast"
 
 const statusConfig: Record<PrescriptionStatus, { label: string; icon: typeof ClockIcon; variant: "default" | "secondary" | "outline" | "destructive" }> = {
   uploaded: { label: "Uploaded", icon: FileImageIcon, variant: "secondary" },
@@ -132,8 +133,11 @@ export default function PrescriptionsPage() {
       setProxyName("")
       setProxyPhone("")
       await loadPageData()
+      toast.success("Prescription submitted", "The pharmacy will review it and send an update.")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to submit prescription.")
+      const message = err instanceof Error ? err.message : "Unable to submit prescription."
+      setError(message)
+      toast.error("Prescription not submitted", message)
     } finally {
       setUploading(false)
     }

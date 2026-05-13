@@ -15,6 +15,7 @@ import {
   type AvailabilityRequest,
   type PharmacyPrescription,
 } from "@/lib/api"
+import { toast } from "@/lib/toast"
 
 type InboxItem =
   | ({ type: "prescription" } & PharmacyPrescription)
@@ -114,8 +115,10 @@ export default function PharmacyRequestsPage() {
       setInstructions("")
       setEstimatedCost("")
       await loadRequests()
+      toast.success(action === "approve" ? "Prescription approved" : "Prescription rejected")
     } catch {
       setError("Unable to update this prescription request.")
+      toast.error("Prescription not updated", "Try again in a moment.")
     } finally {
       setSaving(false)
     }
@@ -137,8 +140,10 @@ export default function PharmacyRequestsPage() {
       setInstructions("")
       setEstimatedCost("")
       await loadRequests()
+      toast.success(response === "available" ? "Availability confirmed" : "Availability declined")
     } catch {
       setError("Unable to update this availability request.")
+      toast.error("Request not updated", "Try again in a moment.")
     } finally {
       setSaving(false)
     }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { Manrope, Sora, Geist } from "next/font/google"
 import "./globals.css"
+import { AppToaster } from "@/components/map/app-toaster"
 import { ThemeProvider } from "@/components/theme-provider"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
@@ -36,7 +37,10 @@ export default function RootLayout({
     >
       <body className={`${manrope.variable} ${sora.variable} font-sans antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <TooltipProvider>{children}</TooltipProvider>
+          <TooltipProvider>
+            {children}
+            <AppToaster />
+          </TooltipProvider>
         </ThemeProvider>
       </body>
     </html>

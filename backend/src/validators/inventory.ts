@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { cleanString } from "../lib/sanitize.js"
 
 export const addInventoryItemSchema = z.object({
   medicineId: z.string().uuid(),
@@ -17,9 +18,9 @@ export const updateInventoryItemSchema = z.object({
 
 export const batchInventoryItemSchema = z.object({
   medicineId: z.string().uuid().optional(),
-  medicineName: z.string().trim().min(1).optional(),
-  form: z.string().trim().min(1).optional(),
-  strength: z.string().trim().min(1).optional().nullable(),
+  medicineName: cleanString(z.string().min(1)).optional(),
+  form: cleanString(z.string().min(1)).optional(),
+  strength: cleanString(z.string().min(1)).optional().nullable(),
   quantity: z.number().int().min(0),
   unitPriceEtb: z.number().positive(),
   stockStatus: z.enum(["in_stock", "low_stock", "out_of_stock"]).optional(),

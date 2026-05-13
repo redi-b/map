@@ -39,6 +39,7 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { canAccessDashboardPath, getAccountLabel, getRoleLabel } from "@/lib/access"
@@ -90,6 +91,7 @@ function getVisibleItems<T extends { href: string }>(role: UserRole, items: T[])
 export function AppSidebar({ currentUser }: { currentUser: CurrentUser }) {
   const pathname = usePathname()
   const router = useRouter()
+  const { isMobile, setOpenMobile } = useSidebar()
   const profile = currentUser.profile
   const role = profile?.role ?? "patient"
   const overviewNavigation = getVisibleItems(role, overviewItems)
@@ -100,8 +102,13 @@ export function AppSidebar({ currentUser }: { currentUser: CurrentUser }) {
 
   async function signOut() {
     await authClient.signOut()
+    if (isMobile) setOpenMobile(false)
     router.replace("/login")
     router.refresh()
+  }
+
+  function closeMobileSidebar() {
+    if (isMobile) setOpenMobile(false)
   }
 
   return (
@@ -133,7 +140,7 @@ export function AppSidebar({ currentUser }: { currentUser: CurrentUser }) {
                   <SidebarMenuButton
                     isActive={pathname === item.href}
                     tooltip={item.label}
-                    render={<Link href={item.href} />}
+                    render={<Link href={item.href} onClick={closeMobileSidebar} />}
                   >
                     <item.icon />
                     <span>{item.label}</span>
@@ -153,7 +160,7 @@ export function AppSidebar({ currentUser }: { currentUser: CurrentUser }) {
                     <SidebarMenuButton
                       isActive={pathname === item.href}
                       tooltip={item.label}
-                      render={<Link href={item.href} />}
+                      render={<Link href={item.href} onClick={closeMobileSidebar} />}
                     >
                       <item.icon />
                       <span>{item.label}</span>
@@ -174,7 +181,7 @@ export function AppSidebar({ currentUser }: { currentUser: CurrentUser }) {
                     <SidebarMenuButton
                       isActive={pathname === item.href}
                       tooltip={item.label}
-                      render={<Link href={item.href} />}
+                      render={<Link href={item.href} onClick={closeMobileSidebar} />}
                     >
                       <item.icon />
                       <span>{item.label}</span>
@@ -205,7 +212,12 @@ export function AppSidebar({ currentUser }: { currentUser: CurrentUser }) {
                 </div>
                 <ChevronsUpDownIcon className="ml-auto" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" side="right" className="w-64">
+              <DropdownMenuContent
+                align="end"
+                side={isMobile ? "top" : "right"}
+                sideOffset={8}
+                className="w-[min(calc(100vw-2rem),16rem)]"
+              >
                 <DropdownMenuGroup>
                   <DropdownMenuLabel>
                     <span className="block truncate font-medium text-foreground">{displayName}</span>

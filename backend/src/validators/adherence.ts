@@ -1,9 +1,10 @@
 import { z } from "zod"
+import { cleanString } from "../lib/sanitize.js"
 
 export const createReminderSchema = z.object({
-  medicineName: z.string().trim().min(2),
-  dosage: z.string().trim().min(1),
-  frequency: z.string().trim().min(2),
+  medicineName: cleanString(z.string().min(2)),
+  dosage: cleanString(z.string().min(1)),
+  frequency: cleanString(z.string().min(2)),
   nextDoseAt: z.string().datetime(),
   startDate: z.string().datetime().optional(),
   durationDays: z.coerce.number().int().positive().optional(),
