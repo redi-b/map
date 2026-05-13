@@ -21,6 +21,7 @@ const routeLabels: Record<string, { eyebrow: string; title: string }> = {
   "/dashboard/pharmacy/requests": { eyebrow: "Pharmacy desk", title: "Requests" },
   "/dashboard/pharmacy/verification": { eyebrow: "Operations review", title: "Verification" },
   "/dashboard/admin/users": { eyebrow: "Operations access", title: "Users" },
+  "/dashboard/admin/audit": { eyebrow: "Operations trace", title: "Audit" },
 }
 
 export function WorkspaceHeader({ currentUser }: { currentUser: CurrentUser }) {

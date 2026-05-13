@@ -7,6 +7,7 @@ import {
   Building2Icon,
   ChevronsUpDownIcon,
   ClipboardListIcon,
+  HistoryIcon,
   LayoutDashboardIcon,
   LogOutIcon,
   PackageSearchIcon,
@@ -69,6 +70,7 @@ const pharmacyItems: SidebarNavItem[] = [
   { label: "Requests", icon: BellIcon, href: "/dashboard/pharmacy/requests" },
   { label: "Verification", icon: ShieldCheckIcon, href: "/dashboard/pharmacy/verification" },
   { label: "Users", icon: UsersIcon, href: "/dashboard/admin/users" },
+  { label: "Audit", icon: HistoryIcon, href: "/dashboard/admin/audit" },
 ]
 
 function getInitials(name?: string | null, email?: string) {

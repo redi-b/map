@@ -20,6 +20,7 @@ export const accessByRole: Record<UserRole, string[]> = {
     "/dashboard",
     "/dashboard/pharmacy/verification",
     "/dashboard/admin/users",
+    "/dashboard/admin/audit",
   ],
 }
 

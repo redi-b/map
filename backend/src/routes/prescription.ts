@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync, FastifyRequest } from "fastify"
 import { requireProfile } from "../lib/auth-context.js"
+import { writeAuditLog } from "../services/audit.js"
 import {
   createPrescription,
   listVerifiedPrescriptionPharmacies,
@@ -161,6 +162,19 @@ export const prescriptionRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const review = await reviewPrescription(id, context.profile.id, parsed.data)
+    await writeAuditLog({
+      actorProfileId: context.profile.id,
+      action: "prescription.review",
+      entityType: "prescription",
+      entityId: id,
+      details: {
+        action: parsed.data.action,
+        pharmacyId,
+        estimatedCostEtb: parsed.data.estimatedCostEtb,
+        hasInstructions: Boolean(parsed.data.instructions),
+        alternativeMedicineId: parsed.data.alternativeMedicineId,
+      },
+    })
     return reply.status(201).send(review)
   })
 }

@@ -20,6 +20,7 @@ export const dashboardAccessByRole: Record<UserRole, string[]> = {
     "/dashboard",
     "/dashboard/pharmacy/verification",
     "/dashboard/admin/users",
+    "/dashboard/admin/audit",
   ],
 }
 
@@ -32,7 +33,7 @@ export const roleHomePath: Record<UserRole, string> = {
 export const accessAreasByRole: Record<UserRole, string[]> = {
   patient: ["dashboard", "find", "prescriptions", "adherence", "assistant"],
   pharmacist: ["dashboard", "pharmacy.setup", "pharmacy.inventory", "pharmacy.requests"],
-  admin: ["dashboard", "pharmacy.verification", "admin.users"],
+  admin: ["dashboard", "pharmacy.verification", "admin.users", "admin.audit"],
 }
 
 export function canAccessDashboardPath(role: UserRole, pathname: string) {

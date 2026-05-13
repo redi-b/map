@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from "fastify"
 import { requireProfile } from "../lib/auth-context.js"
+import { listAuditLogs, writeAuditLog } from "../services/audit.js"
 import {
   createAdminPharmacy,
   createAdminUser,
@@ -16,6 +17,13 @@ import {
 } from "../validators/admin.js"
 
 export const adminRoutes: FastifyPluginAsync = async (app) => {
+  app.get("/admin/audit-logs", async (request, reply) => {
+    const context = await requireProfile(request, reply, ["admin"])
+    if (!context) return
+
+    return { logs: await listAuditLogs() }
+  })
+
   app.get("/admin/pharmacies", async (request, reply) => {
     const context = await requireProfile(request, reply, ["admin"])
     if (!context) return
@@ -33,7 +41,20 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     }
 
     try {
-      return reply.status(201).send(await createAdminPharmacy(parsed.data))
+      const result = await createAdminPharmacy(parsed.data)
+      await writeAuditLog({
+        actorProfileId: context.profile.id,
+        action: "pharmacy.create",
+        entityType: "pharmacy",
+        entityId: result.pharmacy.id,
+        details: {
+          pharmacyName: result.pharmacy.name,
+          branchName: result.pharmacy.branchName,
+          primaryUserId: result.primaryUser.id,
+          primaryUserEmail: result.primaryUser.email,
+        },
+      })
+      return reply.status(201).send(result)
     } catch (error) {
       return reply.status(400).send({ error: error instanceof Error ? error.message : "Unable to register pharmacy" })
     }
@@ -53,6 +74,18 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     if (!pharmacy) {
       return reply.status(404).send({ error: "Pharmacy not found" })
     }
+
+    await writeAuditLog({
+      actorProfileId: context.profile.id,
+      action: parsed.data.isVerified ? "pharmacy.verify" : "pharmacy.unverify",
+      entityType: "pharmacy",
+      entityId: pharmacy.id,
+      details: {
+        pharmacyName: pharmacy.name,
+        branchName: pharmacy.branchName,
+        isVerified: pharmacy.isVerified,
+      },
+    })
 
     return pharmacy
   })
@@ -98,6 +131,19 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(400).send({ error: error instanceof Error ? error.message : "Unable to update user" })
     }
 
+    await writeAuditLog({
+      actorProfileId: context.profile.id,
+      action: "user.update",
+      entityType: "user",
+      entityId: user.id,
+      details: {
+        role: parsed.data.role,
+        isActive: parsed.data.isActive,
+        pharmacyId: parsed.data.pharmacyId,
+        targetEmail: user.email,
+      },
+    })
+
     return {
       ...user,
       isCurrentUser: user.id === context.profile.id,
@@ -115,6 +161,17 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
     try {
       const result = await createAdminUser(parsed.data)
+      await writeAuditLog({
+        actorProfileId: context.profile.id,
+        action: "user.create",
+        entityType: "user",
+        entityId: result.user.id,
+        details: {
+          role: result.user.role,
+          pharmacyId: result.user.pharmacyId,
+          targetEmail: result.user.email,
+        },
+      })
       return reply.status(201).send({
         ...result,
         user: {

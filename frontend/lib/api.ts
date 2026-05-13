@@ -227,6 +227,17 @@ export type AdminUser = {
   pharmacyBranchName: string | null
 }
 
+export type AuditLog = {
+  id: string
+  actorProfileId: string | null
+  actorName: string | null
+  action: string
+  entityType: string
+  entityId: string | null
+  details: Record<string, unknown> | null
+  createdAt: string
+}
+
 export type PharmacySetupPharmacy = {
   id: string
   name: string
@@ -403,6 +414,18 @@ export async function listAdminUsers() {
   }
 
   return response.json() as Promise<{ users: AdminUser[] }>
+}
+
+export async function listAuditLogs() {
+  const response = await fetch(`${apiBaseUrl}/api/admin/audit-logs`, {
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to load audit logs")
+  }
+
+  return response.json() as Promise<{ logs: AuditLog[] }>
 }
 
 export async function updateAdminUser(id: string, input: { role?: UserRole; isActive?: boolean; pharmacyId?: string | null }) {

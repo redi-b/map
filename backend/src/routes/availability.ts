@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from "fastify"
 import { requireProfile } from "../lib/auth-context.js"
+import { writeAuditLog } from "../services/audit.js"
 import {
   createAvailabilityRequest,
   listPatientRequests,
@@ -68,6 +69,20 @@ export const availabilityRoutes: FastifyPluginAsync = async (app) => {
     if (!response) {
       return reply.status(404).send({ error: "Request not found" })
     }
+
+    await writeAuditLog({
+      actorProfileId: context.profile.id,
+      action: "availability_request.respond",
+      entityType: "availability_request",
+      entityId: id,
+      details: {
+        response: parsed.data.response,
+        pharmacyId,
+        hasNotes: Boolean(parsed.data.notes),
+        hasAlternative: Boolean(parsed.data.alternativeMedicineName),
+        estimatedPriceEtb: parsed.data.estimatedPriceEtb,
+      },
+    })
 
     return reply.status(201).send(response)
   })
