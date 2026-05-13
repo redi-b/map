@@ -1,12 +1,13 @@
 "use client"
 
-import { FilterIcon, Loader2Icon, MapPinIcon, PackageSearchIcon, SendIcon, XIcon } from "lucide-react"
+import { Building2Icon, CalendarIcon, InfoIcon, Loader2Icon, MapPinIcon, PackageSearchIcon, SendIcon, ShieldCheckIcon, SlidersHorizontalIcon, TruckIcon, XIcon } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import {
   createAvailabilityRequest,
   getMedicineSuggestions,
@@ -31,9 +32,25 @@ const stockColors = {
   out_of_stock: "outline",
 } as const
 
+const popularSearches = ["Paracetamol", "Amoxicillin", "Ibuprofen", "Insulin"]
+
 function formatDistance(distanceMeters: number) {
   if (distanceMeters < 1000) return `${distanceMeters}m away`
   return `${(distanceMeters / 1000).toFixed(1)}km away`
+}
+
+function formatExpiry(value: string | null) {
+  if (!value) return "Expiry not listed"
+  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value))
+}
+
+function expiryHint(value: string | null) {
+  if (!value) return "Ask the pharmacy to confirm batch expiry before purchase."
+  const expiresAt = new Date(value).getTime()
+  const days = Math.ceil((expiresAt - Date.now()) / (24 * 60 * 60 * 1000))
+  if (days < 0) return "This stock is marked expired. Please request confirmation before visiting."
+  if (days <= 90) return `Expires in about ${days} day${days === 1 ? "" : "s"}. Confirm suitability with the pharmacy.`
+  return "Expiry looks comfortably ahead based on the pharmacy stock record."
 }
 
 export function MedicineSearch() {
@@ -49,6 +66,7 @@ export function MedicineSearch() {
   const [underFiveHundred, setUnderFiveHundred] = useState(false)
   const [loading, setLoading] = useState(false)
   const [requesting, setRequesting] = useState(false)
+  const [selectedResult, setSelectedResult] = useState<MedicineSearchResult | null>(null)
   const [error, setError] = useState("")
   const [hasSearched, setHasSearched] = useState(false)
 
@@ -163,8 +181,18 @@ export function MedicineSearch() {
   return (
     <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <div className="flex flex-col gap-4">
-        {/* Search bar */}
-        <form className="flex flex-col gap-3 rounded-lg border bg-card p-5" onSubmit={onSubmit}>
+        <form className="flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-sm" onSubmit={onSubmit}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="font-[var(--font-display)] text-xl font-semibold">Search verified stock</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Use the filters to narrow results before sending a request or visiting a branch.</p>
+            </div>
+            <Badge variant="outline">
+              <ShieldCheckIcon className="mr-1 size-3" />
+              Verified sources
+            </Badge>
+          </div>
+
           <div className="relative">
             <PackageSearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -211,8 +239,29 @@ export function MedicineSearch() {
             ) : null}
           </div>
 
-          {/* Filters row */}
           <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-muted-foreground">Popular:</span>
+            {popularSearches.map((term) => (
+              <Button
+                key={term}
+                type="button"
+                variant="ghost"
+                size="xs"
+                onClick={() => {
+                  setQuery(term)
+                  void runSearch(term)
+                }}
+              >
+                {term}
+              </Button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-muted/30 p-2">
+            <span className="inline-flex items-center gap-1 px-1 text-xs font-medium text-muted-foreground">
+              <SlidersHorizontalIcon className="size-3.5" />
+              Filters
+            </span>
             {neighborhoods.length > 0 ? (
               <Select value={selectedNeighborhood || "all"} onValueChange={(value) => setSelectedNeighborhood(!value || value === "all" ? "" : value)}>
                 <SelectTrigger size="sm" className="min-w-44">
@@ -300,11 +349,17 @@ export function MedicineSearch() {
           </div>
         ) : hasSearched && filteredResults.length > 0 ? (
           filteredResults.map((item) => (
-            <Card key={item.id}>
-              <CardHeader className="flex flex-row items-start justify-between gap-4">
-                <div>
-                  <CardTitle>{item.medicine}</CardTitle>
-                  <CardDescription className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <Card key={item.id} className="overflow-hidden transition hover:border-primary/40 hover:shadow-sm">
+              <div className="h-1 bg-primary/50" />
+              <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
+                <div className="min-w-0">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <Badge variant={stockColors[item.stockStatus]}>{stockLabels[item.stockStatus]}</Badge>
+                    {item.deliveryAvailable ? <Badge variant="outline"><TruckIcon className="mr-1 size-3" />Delivery</Badge> : null}
+                    <Badge variant="outline">{item.quantity} on hand</Badge>
+                  </div>
+                  <CardTitle className="leading-tight">{item.medicine}</CardTitle>
+                  <CardDescription className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span>{item.category}</span>
                     <span className="text-muted-foreground">/</span>
                     <span className="inline-flex items-center gap-1">
@@ -313,23 +368,19 @@ export function MedicineSearch() {
                     </span>
                   </CardDescription>
                 </div>
-                <Badge variant={stockColors[item.stockStatus]}>
-                  {stockLabels[item.stockStatus]}
-                </Badge>
+                <div className="rounded-xl border bg-muted/30 p-3 text-right">
+                  <p className="text-xs text-muted-foreground">Unit price</p>
+                  <p className="font-[var(--font-display)] text-2xl font-semibold">{item.priceEtb.toFixed(2)} ETB</p>
+                </div>
               </CardHeader>
-              <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <span className="font-[var(--font-display)] text-2xl font-semibold">
-                    {item.priceEtb.toFixed(2)} ETB
-                  </span>
-                  <p className="text-sm text-muted-foreground">
-                    {formatDistance(item.distanceMeters)} · updated {item.updatedAt}
-                  </p>
-                </div>
-                <div className="flex flex-wrap justify-end gap-2">
-                  {item.deliveryAvailable ? <Badge variant="outline">Delivery</Badge> : null}
-                  <Badge variant="outline">{formatDistance(item.distanceMeters)}</Badge>
-                </div>
+              <CardContent className="flex flex-col gap-4 border-t bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-muted-foreground">
+                  {formatDistance(item.distanceMeters)} · updated {item.updatedAt} · {formatExpiry(item.expiresAt)}
+                </p>
+                <Button type="button" variant="outline" size="sm" onClick={() => setSelectedResult(item)}>
+                  <InfoIcon data-icon="inline-start" />
+                  View details
+                </Button>
               </CardContent>
             </Card>
           ))
@@ -412,6 +463,67 @@ export function MedicineSearch() {
           </Card>
         ) : null}
       </div>
+
+      <Sheet open={Boolean(selectedResult)} onOpenChange={(open) => { if (!open) setSelectedResult(null) }}>
+        <SheetContent className="overflow-y-auto sm:max-w-lg">
+          {selectedResult ? (
+            <>
+              <SheetHeader>
+                <SheetTitle>{selectedResult.medicine}</SheetTitle>
+                <SheetDescription>More context to help you decide whether to visit, call, or send a request.</SheetDescription>
+              </SheetHeader>
+              <div className="grid gap-4 px-4 pb-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl border p-3">
+                    <p className="text-xs text-muted-foreground">Price</p>
+                    <p className="text-xl font-semibold">{selectedResult.priceEtb.toFixed(2)} ETB</p>
+                  </div>
+                  <div className="rounded-xl border p-3">
+                    <p className="text-xs text-muted-foreground">Stock on hand</p>
+                    <p className="text-xl font-semibold">{selectedResult.quantity}</p>
+                  </div>
+                  <div className="rounded-xl border p-3">
+                    <p className="text-xs text-muted-foreground">Status</p>
+                    <Badge className="mt-2" variant={stockColors[selectedResult.stockStatus]}>{stockLabels[selectedResult.stockStatus]}</Badge>
+                  </div>
+                  <div className="rounded-xl border p-3">
+                    <p className="text-xs text-muted-foreground">Distance</p>
+                    <p className="mt-1 font-medium">{formatDistance(selectedResult.distanceMeters)}</p>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border bg-muted/40 p-4 text-sm">
+                  <div className="flex items-center gap-2 font-medium">
+                    <CalendarIcon className="size-4" />
+                    {formatExpiry(selectedResult.expiresAt)}
+                  </div>
+                  <p className="mt-1 text-muted-foreground">{expiryHint(selectedResult.expiresAt)}</p>
+                </div>
+
+                <div className="grid gap-3 text-sm">
+                  <div className="flex items-start gap-3 rounded-xl border p-3">
+                    <Building2Icon className="mt-0.5 size-4 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">{selectedResult.pharmacy}</p>
+                      <p className="text-muted-foreground">{selectedResult.neighborhood}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 rounded-xl border p-3">
+                    <TruckIcon className="mt-0.5 size-4 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">{selectedResult.deliveryAvailable ? "Delivery may be available" : "Pickup recommended"}</p>
+                      <p className="text-muted-foreground">Delivery availability is estimated from current stock. Confirm directly for urgent orders.</p>
+                    </div>
+                  </div>
+                  <div className="rounded-xl border bg-primary/5 p-3 text-muted-foreground">
+                    Updated {selectedResult.updatedAt}. Stock can change quickly, so call ahead or use a broadcast request when availability is critical.
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : null}
+        </SheetContent>
+      </Sheet>
     </section>
   )
 }

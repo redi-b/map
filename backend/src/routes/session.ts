@@ -1,8 +1,8 @@
 import type { FastifyPluginAsync } from "fastify"
 import { accessAreasByRole, dashboardAccessByRole, roleHomePath } from "../lib/access.js"
 import { getCurrentProfile, getSession, requireProfile } from "../lib/auth-context.js"
-import { createOrUpdateProfile } from "../services/profile.js"
-import { createProfileSchema } from "../validators/profile.js"
+import { createOrUpdateProfile, updateProfile } from "../services/profile.js"
+import { createProfileSchema, updateProfileSchema } from "../validators/profile.js"
 
 export const sessionRoutes: FastifyPluginAsync = async (app) => {
   app.get("/me", async (request, reply) => {
@@ -27,9 +27,22 @@ export const sessionRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(401).send({ error: "Unauthorized" })
     }
 
-    // Initial profile setup is patient-scoped.
-    const parsed = createProfileSchema.safeParse(request.body)
+    const existingProfile = await getCurrentProfile(session.user.id)
 
+    if (existingProfile) {
+      const parsed = updateProfileSchema.safeParse(request.body)
+      if (!parsed.success) {
+        return reply.status(400).send({
+          error: "Invalid profile data",
+          details: parsed.error.flatten().fieldErrors,
+        })
+      }
+
+      const [profile] = await updateProfile(existingProfile.id, parsed.data)
+      return reply.status(200).send(profile)
+    }
+
+    const parsed = createProfileSchema.safeParse(request.body)
     if (!parsed.success) {
       return reply.status(400).send({
         error: "Invalid profile data",

@@ -144,6 +144,7 @@ export async function searchMedicines(query: MedicineSearchQuery) {
       unitPriceEtb: inventoryItems.unitPriceEtb,
       stockStatus: inventoryItems.stockStatus,
       quantity: inventoryItems.quantity,
+      expiresAt: inventoryItems.expiresAt,
       updatedAt: inventoryItems.updatedAt,
     })
     .from(inventoryItems)
@@ -179,7 +180,9 @@ export async function searchMedicines(query: MedicineSearchQuery) {
       }, query.neighborhood),
       priceEtb: Number(row.unitPriceEtb),
       stockStatus: row.stockStatus,
+      quantity: row.quantity,
       deliveryAvailable: row.quantity > 0,
+      expiresAt: row.expiresAt?.toISOString() ?? null,
       updatedAt: formatUpdatedAt(row.updatedAt),
     })),
   }

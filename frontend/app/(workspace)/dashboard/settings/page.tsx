@@ -1,6 +1,6 @@
 "use client"
 
-import { Building2Icon, CheckCircle2Icon, KeyRoundIcon, Loader2Icon, ShieldCheckIcon, UserRoundIcon } from "lucide-react"
+import { Building2Icon, CheckCircle2Icon, KeyRoundIcon, Loader2Icon, MailIcon, PhoneIcon, ShieldCheckIcon, UserRoundIcon } from "lucide-react"
 import { type FormEvent, useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-  completePharmacyPasswordSetup,
+  changeAccountPassword,
   getCurrentUser,
   getPharmacySetup,
   saveProfile,
@@ -97,12 +97,12 @@ export default function SettingsPage() {
     setSavingPassword(true)
 
     try {
-      await completePharmacyPasswordSetup({ currentPassword, newPassword })
+      await changeAccountPassword({ currentPassword, newPassword })
       setCurrentPassword("")
       setNewPassword("")
       setConfirmPassword("")
       setCurrentUser((user) => user?.profile ? { ...user, profile: { ...user.profile, mustChangePassword: false } } : user)
-      toast.success("Password changed", "Your account is ready.")
+      toast.success("Password changed", "Your account security has been updated.")
     } catch {
       setError("Unable to change password. Check the current password and try again.")
       toast.error("Password not changed", "Check the current password and try again.")
@@ -160,31 +160,60 @@ export default function SettingsPage() {
           {error ? <p className="rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p> : null}
 
         <TabsContent value="profile">
-          <Card>
-            <CardHeader>
-              <CardTitle>Profile</CardTitle>
-              <CardDescription>Keep contact details accurate for pharmacy follow-up.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form className="grid gap-4 md:max-w-xl" onSubmit={onProfileSubmit}>
-                <label className="grid gap-2 text-sm font-medium">
-                  Full name
-                  <Input value={fullName} onChange={(event) => setFullName(event.target.value)} autoComplete="name" required />
-                </label>
-                <label className="grid gap-2 text-sm font-medium">
-                  Phone
-                  <Input value={phone} onChange={(event) => setPhone(event.target.value)} type="tel" autoComplete="tel" placeholder="+251XXXXXXXXX" />
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  <Button type="submit" disabled={savingProfile}>
+          <div className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
+            <Card className="overflow-hidden">
+              <div className="h-24 bg-gradient-to-r from-primary/25 via-primary/10 to-transparent" />
+              <CardContent className="-mt-10 flex flex-col gap-4 p-6">
+                <div className="flex items-end justify-between gap-3">
+                  <div className="flex size-20 items-center justify-center rounded-2xl border-4 border-background bg-primary text-2xl font-semibold text-primary-foreground shadow-sm">
+                    {initials}
+                  </div>
+                  <Badge variant="secondary">{getAccountLabel(role)}</Badge>
+                </div>
+                <div>
+                  <h2 className="font-[var(--font-display)] text-2xl font-semibold">{fullName || "Your profile"}</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">This is the identity pharmacies and care tools use for follow-up.</p>
+                </div>
+                <div className="grid gap-2 text-sm">
+                  <div className="flex items-center gap-2 rounded-lg border bg-muted/30 p-3">
+                    <MailIcon className="size-4 text-muted-foreground" />
+                    <span className="truncate">{currentUser?.session.user.email}</span>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-lg border bg-muted/30 p-3">
+                    <PhoneIcon className="size-4 text-muted-foreground" />
+                    <span>{phone || "No phone number added"}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Profile details</CardTitle>
+                <CardDescription>Keep contact details accurate for pharmacy follow-up and account recovery.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form className="grid gap-4" onSubmit={onProfileSubmit}>
+                  <label className="grid gap-2 text-sm font-medium">
+                    Full name
+                    <Input value={fullName} onChange={(event) => setFullName(event.target.value)} autoComplete="name" required />
+                  </label>
+                  <label className="grid gap-2 text-sm font-medium">
+                    Phone
+                    <Input value={phone} onChange={(event) => setPhone(event.target.value)} type="tel" autoComplete="tel" placeholder="+251XXXXXXXXX" />
+                  </label>
+                  <div className="flex flex-wrap items-center gap-2 rounded-lg bg-secondary/50 p-3 text-sm text-muted-foreground">
+                    <ShieldCheckIcon className="size-4 text-primary" />
+                    Role changes are managed by administrators. You can update your name and phone here.
+                  </div>
+                  <Button type="submit" className="w-fit" disabled={savingProfile}>
                     {savingProfile ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <CheckCircle2Icon data-icon="inline-start" />}
                     Save profile
                   </Button>
-                  <Badge variant="secondary">{getAccountLabel(role)}</Badge>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="workspace">
@@ -230,32 +259,31 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Security</CardTitle>
-              <CardDescription>{role === "pharmacist" ? "Change the temporary password before managing pharmacy tools." : "Password changes use your sign-in provider."}</CardDescription>
+              <CardDescription>Change your password regularly to keep your account secure.</CardDescription>
             </CardHeader>
             <CardContent>
-              {role === "pharmacist" ? (
-                <form className="grid gap-4 md:max-w-xl" onSubmit={onPasswordSubmit}>
-                  {currentUser?.profile?.mustChangePassword ? <Badge className="w-fit">Password setup required</Badge> : null}
-                  <label className="grid gap-2 text-sm font-medium">
-                    Current password
-                    <Input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required />
-                  </label>
-                  <label className="grid gap-2 text-sm font-medium">
-                    New password
-                    <Input type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} minLength={8} required />
-                  </label>
-                  <label className="grid gap-2 text-sm font-medium">
-                    Confirm new password
-                    <Input type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} minLength={8} required />
-                  </label>
-                  <Button type="submit" disabled={savingPassword}>
-                    {savingPassword ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <KeyRoundIcon data-icon="inline-start" />}
-                    Change password
-                  </Button>
-                </form>
-              ) : (
-                <p className="text-sm text-muted-foreground">Use the sign-in page if you need to recover account access.</p>
-              )}
+              <form className="grid gap-4 md:max-w-xl" onSubmit={onPasswordSubmit}>
+                {currentUser?.profile?.mustChangePassword ? <Badge className="w-fit">Password setup required</Badge> : null}
+                <div className="rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
+                  Use at least 8 characters. Avoid reusing passwords from other health or email accounts.
+                </div>
+                <label className="grid gap-2 text-sm font-medium">
+                  Current password
+                  <Input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required />
+                </label>
+                <label className="grid gap-2 text-sm font-medium">
+                  New password
+                  <Input type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} minLength={8} required />
+                </label>
+                <label className="grid gap-2 text-sm font-medium">
+                  Confirm new password
+                  <Input type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} minLength={8} required />
+                </label>
+                <Button type="submit" className="w-fit" disabled={savingPassword}>
+                  {savingPassword ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <KeyRoundIcon data-icon="inline-start" />}
+                  Change password
+                </Button>
+              </form>
             </CardContent>
           </Card>
         </TabsContent>

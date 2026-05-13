@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm"
 import { db } from "../db/client.js"
 import { profiles } from "../db/schema.js"
-import type { CreateProfileInput } from "../validators/profile.js"
+import type { CreateProfileInput, UpdateProfileInput } from "../validators/profile.js"
 
 export async function findProfileByAuthUserId(authUserId: string) {
   const [profile] = await db
@@ -17,15 +17,7 @@ export async function createOrUpdateProfile(authUserId: string, input: CreatePro
   const existing = await findProfileByAuthUserId(authUserId)
 
   if (existing) {
-    const [updated] = await db
-      .update(profiles)
-      .set({
-        fullName: input.fullName,
-        phone: input.phone || null,
-      })
-      .where(eq(profiles.id, existing.id))
-      .returning()
-
+    const [updated] = await updateProfile(existing.id, input)
     return { profile: updated, created: false }
   }
 
@@ -40,4 +32,15 @@ export async function createOrUpdateProfile(authUserId: string, input: CreatePro
     .returning()
 
   return { profile, created: true }
+}
+
+export function updateProfile(profileId: string, input: UpdateProfileInput) {
+  return db
+    .update(profiles)
+    .set({
+      fullName: input.fullName,
+      phone: input.phone || null,
+    })
+    .where(eq(profiles.id, profileId))
+    .returning()
 }

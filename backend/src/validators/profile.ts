@@ -3,7 +3,7 @@ import { cleanString } from "../lib/sanitize.js"
 
 export const ethiopianPhoneRegex = /^\+251\d{9}$/
 
-export const createProfileSchema = z.object({
+const profileContactFields = {
   fullName: cleanString(z.string().min(2, "Name must be at least 2 characters").max(120)),
   phone: cleanString(z
     .string()
@@ -11,8 +11,14 @@ export const createProfileSchema = z.object({
   )
     .optional()
     .or(z.literal("")),
+}
+
+export const createProfileSchema = z.object({
+  ...profileContactFields,
   role: z.enum(["patient"]),
 })
+
+export const updateProfileSchema = z.object(profileContactFields)
 
 /**
  * Admin-only profile assignment — allows setting any role.
@@ -30,4 +36,5 @@ export const adminAssignProfileSchema = z.object({
 })
 
 export type CreateProfileInput = z.infer<typeof createProfileSchema>
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>
 export type AdminAssignProfileInput = z.infer<typeof adminAssignProfileSchema>

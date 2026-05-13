@@ -194,49 +194,54 @@ export default function PrescriptionsPage() {
           const StatusIcon = config.icon
 
           return (
-            <Card key={`${item.type}-${item.id}`}>
-              <CardHeader className="flex flex-row items-start justify-between gap-4">
-                <div>
-                  <CardTitle>
-                    {item.type === "prescription" ? `Prescription ${item.id.slice(0, 8)}` : item.medicineName}
-                  </CardTitle>
-                  <CardDescription className="mt-1 flex items-center gap-2">
-                    {item.type === "prescription" ? item.pharmacy : item.pharmacy}
-                    <span className="text-muted-foreground">·</span>
-                    {formatDate(item.createdAt)}
-                  </CardDescription>
-                </div>
-                <Badge variant={config.variant}>
-                  <StatusIcon className="mr-1 size-3.5" />
-                  {config.label}
-                </Badge>
-              </CardHeader>
-              <CardContent className="flex items-center justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-3">
+            <Card key={`${item.type}-${item.id}`} className="overflow-hidden transition hover:border-primary/40 hover:shadow-sm">
+              <CardContent className="grid gap-4 p-4 md:grid-cols-[8rem_1fr] md:items-start">
+                <div className="md:self-start">
                   {item.type === "prescription" && item.imageUrl ? (
                     <PrescriptionImage
                       alt="Prescription preview"
                       src={getApiUrl(item.imageUrl)}
-                      className="hidden aspect-square size-16 shrink-0 sm:block [&_img]:max-h-16"
+                      className="aspect-[4/3] min-h-0 rounded-lg"
+                      imageClassName="max-h-24"
+                      label="Prescription"
+                      showOverlay={false}
                     />
-                  ) : null}
-                  <p className="text-sm text-muted-foreground">
-                    {item.notes || (item.type === "prescription" ? "Submitted for pharmacy review" : "Waiting for pharmacy response")}
-                  </p>
+                  ) : item.type === "prescription" ? (
+                    <div className="flex aspect-[4/3] items-center justify-center rounded-lg border bg-background text-muted-foreground">
+                      <FileImageIcon className="size-7" />
+                    </div>
+                  ) : (
+                    <div className="flex aspect-[4/3] items-center justify-center rounded-lg border bg-background text-muted-foreground">
+                      <PackageSearchIcon className="size-7" />
+                    </div>
+                  )}
                 </div>
-                <div className="flex gap-1">
-                  {item.type === "prescription" && item.imageUrl ? (
-                    <Badge variant="outline">
-                      <FileImageIcon className="mr-1 size-3" />
-                      Image stored
-                    </Badge>
-                  ) : null}
-                  {item.type === "availability" ? (
-                    <Badge variant="outline">
-                      <PackageSearchIcon className="mr-1 size-3" />
-                      Availability
-                    </Badge>
-                  ) : null}
+
+                <div className="flex min-w-0 flex-col gap-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="mb-2 flex flex-wrap gap-2">
+                        <Badge variant={config.variant}>
+                          <StatusIcon className="mr-1 size-3.5" />
+                          {config.label}
+                        </Badge>
+                        <Badge variant="outline">{item.type === "prescription" ? "Prescription" : "Availability"}</Badge>
+                        {item.type === "prescription" ? <Badge variant="outline">{item.neighborhood}</Badge> : null}
+                      </div>
+                      <CardTitle className="leading-tight">
+                        {item.type === "prescription" ? `Prescription ${item.id.slice(0, 8)}` : item.medicineName}
+                      </CardTitle>
+                      <CardDescription className="mt-1 flex flex-wrap items-center gap-2">
+                        {item.pharmacy}
+                        <span className="text-muted-foreground">·</span>
+                        {formatDate(item.createdAt)}
+                      </CardDescription>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border bg-muted/25 p-3 text-sm text-muted-foreground">
+                    {item.notes || (item.type === "prescription" ? "Submitted for pharmacy review. The selected pharmacy will respond with approval, rejection, or next steps." : "Waiting for a pharmacy response. You can send another search request if the medicine is urgent.")}
+                  </div>
                 </div>
               </CardContent>
             </Card>

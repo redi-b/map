@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync } from "fastify"
+import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify"
 import { fromNodeHeaders } from "better-auth/node"
 import { auth } from "../lib/auth.js"
 import { requireProfile } from "../lib/auth-context.js"
@@ -9,15 +9,8 @@ import {
 import { completePasswordSetupSchema } from "../validators/pharmacy.js"
 
 export const pharmacySetupRoutes: FastifyPluginAsync = async (app) => {
-  app.get("/pharmacy/setup", async (request, reply) => {
-    const context = await requireProfile(request, reply, ["pharmacist"])
-    if (!context) return
-
-    return getPharmacySetupState(context.profile.id)
-  })
-
-  app.post("/pharmacy/setup/password", async (request, reply) => {
-    const context = await requireProfile(request, reply, ["pharmacist"])
+  async function handlePasswordChange(request: FastifyRequest, reply: FastifyReply) {
+    const context = await requireProfile(request, reply, ["patient", "pharmacist", "admin"])
     if (!context) return
 
     const parsed = completePasswordSetupSchema.safeParse(request.body)
@@ -39,5 +32,15 @@ export const pharmacySetupRoutes: FastifyPluginAsync = async (app) => {
     }
 
     return markPasswordSetupComplete(context.profile.id)
+  }
+
+  app.get("/pharmacy/setup", async (request, reply) => {
+    const context = await requireProfile(request, reply, ["pharmacist"])
+    if (!context) return
+
+    return getPharmacySetupState(context.profile.id)
   })
+
+  app.post("/pharmacy/setup/password", handlePasswordChange)
+  app.post("/account/password", handlePasswordChange)
 }

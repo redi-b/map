@@ -21,6 +21,7 @@ export const notificationRoutes: FastifyPluginAsync = async (app) => {
         id: n.id,
         message: n.message,
         source: n.source,
+        sourceEntityId: n.sourceEntityId,
         isRead: n.isRead,
         dateSent: n.dateSent.toISOString(),
       })),

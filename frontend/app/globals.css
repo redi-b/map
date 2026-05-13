@@ -137,12 +137,4 @@
   body {
     @apply min-h-screen bg-background text-foreground;
   }
-
-  [data-sileo-toast],
-  [data-sileo] {
-    border: 1px solid color-mix(in oklch, var(--border) 72%, var(--primary));
-    box-shadow:
-      0 20px 50px color-mix(in oklch, var(--foreground) 14%, transparent),
-      0 1px 0 color-mix(in oklch, var(--foreground) 8%, transparent);
-  }
 }

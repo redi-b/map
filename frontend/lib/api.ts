@@ -34,7 +34,9 @@ export type MedicineSearchResult = {
   distanceMeters: number
   priceEtb: number
   stockStatus: "in_stock" | "low_stock" | "out_of_stock"
+  quantity: number
   deliveryAvailable: boolean
+  expiresAt: string | null
   updatedAt: string
 }
 
@@ -492,6 +494,24 @@ export async function completePharmacyPasswordSetup(input: {
   }
 
   return response.json() as Promise<PharmacySetupState>
+}
+
+export async function changeAccountPassword(input: {
+  currentPassword: string
+  newPassword: string
+}) {
+  const response = await fetch(`${apiBaseUrl}/api/account/password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(input),
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to change password")
+  }
+
+  return response.json()
 }
 
 export async function getTodayAdherence() {

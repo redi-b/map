@@ -207,7 +207,13 @@ export default function PharmacyRequestsPage() {
           </CardHeader>
           <CardContent>
             {selected?.type === "prescription" && selected.imageUrl ? (
-              <PrescriptionImage alt="Uploaded prescription" src={getApiUrl(selected.imageUrl)} />
+              <PrescriptionImage
+                alt="Uploaded prescription"
+                src={getApiUrl(selected.imageUrl)}
+                className="aspect-[4/5] min-h-[28rem]"
+                imageClassName="max-h-[38rem]"
+                label="Review image"
+              />
             ) : (
               <div className="flex aspect-[4/5] flex-col items-center justify-center gap-3 rounded-lg border bg-muted p-6 text-center text-muted-foreground">
                 {selected?.type === "availability" ? <PackageCheckIcon className="size-8" /> : <FileImageIcon className="size-8" />}
