@@ -38,6 +38,11 @@ export function LoginForm() {
       return
     }
 
+    if (currentUser.profile.mustChangePassword && currentUser.profile.role === "pharmacist") {
+      router.replace("/dashboard/pharmacy/setup")
+      return
+    }
+
     router.replace(searchParams.get("next") ?? getRoleHomePath(currentUser.profile.role))
   }
 

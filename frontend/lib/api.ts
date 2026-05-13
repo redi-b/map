@@ -21,6 +21,7 @@ export type CurrentUser = {
     phone: string | null
     role: UserRole
     isActive: boolean
+    mustChangePassword: boolean
   } | null
 }
 
@@ -216,10 +217,14 @@ export type AdminUser = {
   phone: string | null
   role: UserRole
   isActive: boolean
+  mustChangePassword: boolean
   createdAt: string
   email: string
   accountName: string
   isCurrentUser: boolean
+  pharmacyId: string | null
+  pharmacyName: string | null
+  pharmacyBranchName: string | null
 }
 
 export type PharmacySetupPharmacy = {
@@ -238,7 +243,6 @@ export type PharmacySetupPharmacy = {
 
 export type PharmacySetupState = {
   assignedPharmacy: PharmacySetupPharmacy | null
-  pharmacies: PharmacySetupPharmacy[]
 }
 
 export type SearchFilters = {
@@ -348,6 +352,9 @@ export async function createAdminPharmacy(input: {
   supportsDelivery: boolean
   operatingHours?: string
   isVerified?: boolean
+  primaryContactName: string
+  primaryContactEmail: string
+  primaryContactPhone?: string
 }) {
   const response = await fetch(`${apiBaseUrl}/api/admin/pharmacies`, {
     method: "POST",
@@ -360,7 +367,15 @@ export async function createAdminPharmacy(input: {
     throw new Error("Unable to register pharmacy")
   }
 
-  return response.json() as Promise<AdminPharmacy>
+  return response.json() as Promise<{
+    pharmacy: AdminPharmacy
+    primaryUser: {
+      id: string
+      fullName: string
+      email: string
+      initialPassword: string
+    }
+  }>
 }
 
 export async function verifyAdminPharmacy(id: string, isVerified: boolean) {
@@ -390,7 +405,7 @@ export async function listAdminUsers() {
   return response.json() as Promise<{ users: AdminUser[] }>
 }
 
-export async function updateAdminUser(id: string, input: { role?: UserRole; isActive?: boolean }) {
+export async function updateAdminUser(id: string, input: { role?: UserRole; isActive?: boolean; pharmacyId?: string | null }) {
   const response = await fetch(`${apiBaseUrl}/api/admin/users/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -405,6 +420,27 @@ export async function updateAdminUser(id: string, input: { role?: UserRole; isAc
   return response.json() as Promise<AdminUser>
 }
 
+export async function createAdminUser(input: {
+  fullName: string
+  email: string
+  phone?: string
+  role: "pharmacist"
+  pharmacyId: string
+}) {
+  const response = await fetch(`${apiBaseUrl}/api/admin/users`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(input),
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to create user")
+  }
+
+  return response.json() as Promise<{ user: AdminUser; initialPassword: string }>
+}
+
 export async function getPharmacySetup() {
   const response = await fetch(`${apiBaseUrl}/api/pharmacy/setup`, {
     credentials: "include",
@@ -417,16 +453,19 @@ export async function getPharmacySetup() {
   return response.json() as Promise<PharmacySetupState>
 }
 
-export async function assignPharmacy(pharmacyId: string) {
-  const response = await fetch(`${apiBaseUrl}/api/pharmacy/setup`, {
+export async function completePharmacyPasswordSetup(input: {
+  currentPassword: string
+  newPassword: string
+}) {
+  const response = await fetch(`${apiBaseUrl}/api/pharmacy/setup/password`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ pharmacyId }),
+    body: JSON.stringify(input),
   })
 
   if (!response.ok) {
-    throw new Error("Unable to set pharmacy branch")
+    throw new Error("Unable to change password")
   }
 
   return response.json() as Promise<PharmacySetupState>

@@ -338,8 +338,8 @@ function DetailList({
         {rows.length === 0 ? (
           <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">{empty}</div>
         ) : null}
-        {rows.map((row) => (
-          <div key={row.label} className="flex items-start justify-between gap-4 rounded-lg border p-3">
+        {rows.map((row, index) => (
+          <div key={`${row.label}-${row.detail}-${index}`} className="flex items-start justify-between gap-4 rounded-lg border p-3">
             <div>
               <p className="font-medium">{row.label}</p>
               <p className="text-sm text-muted-foreground">{row.detail}</p>

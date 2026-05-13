@@ -37,6 +37,9 @@ type PharmacyForm = {
   email: string
   operatingHours: string
   supportsDelivery: boolean
+  primaryContactName: string
+  primaryContactEmail: string
+  primaryContactPhone: string
 }
 
 const emptyForm: PharmacyForm = {
@@ -49,6 +52,16 @@ const emptyForm: PharmacyForm = {
   email: "",
   operatingHours: "",
   supportsDelivery: false,
+  primaryContactName: "",
+  primaryContactEmail: "",
+  primaryContactPhone: "",
+}
+
+type CreatedCredentials = {
+  pharmacyName: string
+  fullName: string
+  email: string
+  initialPassword: string
 }
 
 function branchLabel(pharmacy: AdminPharmacy) {
@@ -64,6 +77,7 @@ export default function PharmacyVerificationPage() {
   const [saving, setSaving] = useState(false)
   const [updatingId, setUpdatingId] = useState("")
   const [error, setError] = useState("")
+  const [createdCredentials, setCreatedCredentials] = useState<CreatedCredentials | null>(null)
 
   const filtered = useMemo(() => {
     return pharmacies.filter((pharmacy) => {
@@ -123,7 +137,7 @@ export default function PharmacyVerificationPage() {
     setError("")
 
     try {
-      const pharmacy = await createAdminPharmacy({
+      const result = await createAdminPharmacy({
         name: form.name.trim(),
         branchName: form.branchName.trim() || undefined,
         neighborhood: form.neighborhood.trim(),
@@ -133,9 +147,18 @@ export default function PharmacyVerificationPage() {
         email: form.email.trim() || undefined,
         operatingHours: form.operatingHours.trim() || undefined,
         supportsDelivery: form.supportsDelivery,
+        primaryContactName: form.primaryContactName.trim(),
+        primaryContactEmail: form.primaryContactEmail.trim(),
+        primaryContactPhone: form.primaryContactPhone.trim() || undefined,
       })
 
-      setPharmacies((current) => [pharmacy, ...current])
+      setPharmacies((current) => [result.pharmacy, ...current])
+      setCreatedCredentials({
+        pharmacyName: branchLabel(result.pharmacy),
+        fullName: result.primaryUser.fullName,
+        email: result.primaryUser.email,
+        initialPassword: result.primaryUser.initialPassword,
+      })
       setForm(emptyForm)
       setShowRegister(false)
     } catch {
@@ -201,7 +224,9 @@ export default function PharmacyVerificationPage() {
             <form onSubmit={handleRegister} className="grid gap-4 rounded-lg border bg-secondary/40 p-4">
               <div>
                 <p className="font-medium">Register a pharmacy</p>
-                <p className="text-sm text-muted-foreground">New branches stay hidden from patients until verified.</p>
+                <p className="text-sm text-muted-foreground">
+                  New branches stay hidden from patients until verified. A pharmacist login is created with a temporary password.
+                </p>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <Input placeholder="Pharmacy name" value={form.name} onChange={(event) => updateForm("name", event.target.value)} required />
@@ -212,6 +237,26 @@ export default function PharmacyVerificationPage() {
                 <Input placeholder="Phone (+251...)" value={form.phone} onChange={(event) => updateForm("phone", event.target.value)} required />
                 <Input placeholder="Email" type="email" value={form.email} onChange={(event) => updateForm("email", event.target.value)} />
                 <Input placeholder="Operating hours" value={form.operatingHours} onChange={(event) => updateForm("operatingHours", event.target.value)} />
+              </div>
+              <div className="grid gap-3 rounded-md border bg-background p-3 md:grid-cols-3">
+                <Input
+                  placeholder="Primary pharmacist name"
+                  value={form.primaryContactName}
+                  onChange={(event) => updateForm("primaryContactName", event.target.value)}
+                  required
+                />
+                <Input
+                  placeholder="Login email"
+                  type="email"
+                  value={form.primaryContactEmail}
+                  onChange={(event) => updateForm("primaryContactEmail", event.target.value)}
+                  required
+                />
+                <Input
+                  placeholder="Contact phone"
+                  value={form.primaryContactPhone}
+                  onChange={(event) => updateForm("primaryContactPhone", event.target.value)}
+                />
               </div>
               <label className="flex items-center justify-between gap-4 rounded-md border bg-background p-3 text-sm font-medium">
                 <span className="flex items-center gap-2">
@@ -233,6 +278,31 @@ export default function PharmacyVerificationPage() {
                 </Button>
               </div>
             </form>
+          ) : null}
+
+          {createdCredentials ? (
+            <div className="grid gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">
+              <div>
+                <p className="font-medium">Pharmacist login created</p>
+                <p className="text-muted-foreground">
+                  Share these details with {createdCredentials.fullName}. They will be asked to change the password on first login.
+                </p>
+              </div>
+              <div className="grid gap-2 rounded-md bg-background p-3 sm:grid-cols-3">
+                <span>
+                  <span className="block text-xs text-muted-foreground">Pharmacy</span>
+                  {createdCredentials.pharmacyName}
+                </span>
+                <span>
+                  <span className="block text-xs text-muted-foreground">Email</span>
+                  {createdCredentials.email}
+                </span>
+                <span>
+                  <span className="block text-xs text-muted-foreground">Temporary password</span>
+                  <code className="font-mono text-xs">{createdCredentials.initialPassword}</code>
+                </span>
+              </div>
+            </div>
           ) : null}
 
           {loading ? (

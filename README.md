@@ -59,6 +59,8 @@ healthplus.pharmacist@map.local / mapPharmacy2026!
 redcross.pharmacist@map.local / mapPharmacy2026!
 ```
 
+Seeded pharmacist accounts are linked to their pharmacy and are asked to set a private password on first login.
+
 ## Development
 
 Run the frontend and backend together:

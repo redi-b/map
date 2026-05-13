@@ -36,6 +36,15 @@ export function AuthGate({ children }: AuthGateProps) {
           return
         }
 
+        if (
+          currentUser.profile.mustChangePassword &&
+          currentUser.profile.role === "pharmacist" &&
+          pathname !== "/dashboard/pharmacy/setup"
+        ) {
+          router.replace("/dashboard/pharmacy/setup")
+          return
+        }
+
         setUser(currentUser)
       })
       .catch(() => {

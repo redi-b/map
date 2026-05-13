@@ -16,7 +16,7 @@ const routeLabels: Record<string, { eyebrow: string; title: string }> = {
   "/dashboard/prescriptions": { eyebrow: "Verification trail", title: "Prescriptions" },
   "/dashboard/adherence": { eyebrow: "Dose schedule", title: "Adherence" },
   "/dashboard/assistant": { eyebrow: "Medication guidance", title: "Medication guide" },
-  "/dashboard/pharmacy/setup": { eyebrow: "Branch access", title: "Branch setup" },
+  "/dashboard/pharmacy/setup": { eyebrow: "Account security", title: "Account setup" },
   "/dashboard/pharmacy/inventory": { eyebrow: "Branch operations", title: "Inventory" },
   "/dashboard/pharmacy/requests": { eyebrow: "Pharmacy desk", title: "Requests" },
   "/dashboard/pharmacy/verification": { eyebrow: "Operations review", title: "Verification" },

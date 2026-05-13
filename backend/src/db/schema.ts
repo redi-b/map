@@ -100,6 +100,7 @@ export const profiles = pgTable("profiles", {
   phone: text("phone"),
   role: userRole("role").notNull().default("patient"),
   isActive: boolean("is_active").notNull().default(true),
+  mustChangePassword: boolean("must_change_password").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 })
 

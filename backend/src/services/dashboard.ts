@@ -457,9 +457,9 @@ function emptyPharmacistDashboard(name: string): DashboardSummary {
     hero: {
       badge: "Pharmacy dashboard",
       title: `Inventory desk, ${name}`,
-      description: "Connect your account to a registered pharmacy branch before managing inventory or patient requests.",
+      description: "Your pharmacy assignment is not ready yet. Once assigned, inventory and patient request tools will appear here.",
       primaryHref: "/dashboard/pharmacy/setup",
-      primaryLabel: "Set up branch",
+      primaryLabel: "Review setup",
       primaryIcon: "shield",
       secondaryHref: "/dashboard/pharmacy/inventory",
       secondaryLabel: "View inventory",

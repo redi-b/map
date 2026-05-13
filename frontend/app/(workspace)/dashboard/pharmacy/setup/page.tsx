@@ -3,18 +3,22 @@
 import {
   Building2Icon,
   CheckCircle2Icon,
+  KeyRoundIcon,
   Loader2Icon,
   MapPinIcon,
   PhoneIcon,
   ShieldCheckIcon,
   TruckIcon,
 } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
+import { type FormEvent, useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import {
-  assignPharmacy,
+  completePharmacyPasswordSetup,
+  getCurrentUser,
   getPharmacySetup,
   type PharmacySetupPharmacy,
 } from "@/lib/api"
@@ -24,30 +28,27 @@ function branchLabel(pharmacy: PharmacySetupPharmacy) {
 }
 
 export default function PharmacySetupPage() {
+  const router = useRouter()
   const [assignedPharmacy, setAssignedPharmacy] = useState<PharmacySetupPharmacy | null>(null)
-  const [pharmacies, setPharmacies] = useState<PharmacySetupPharmacy[]>([])
-  const [selectedId, setSelectedId] = useState("")
+  const [mustChangePassword, setMustChangePassword] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
-  const selectedPharmacy = useMemo(
-    () => pharmacies.find((pharmacy) => pharmacy.id === selectedId) ?? null,
-    [pharmacies, selectedId],
-  )
-
   useEffect(() => {
     let active = true
 
-    getPharmacySetup()
-      .then((state) => {
+    Promise.all([getCurrentUser(), getPharmacySetup()])
+      .then(([currentUser, setup]) => {
         if (!active) return
-        setAssignedPharmacy(state.assignedPharmacy)
-        setPharmacies(state.pharmacies)
-        setSelectedId(state.assignedPharmacy?.id ?? state.pharmacies[0]?.id ?? "")
+        setMustChangePassword(Boolean(currentUser?.profile?.mustChangePassword))
+        setAssignedPharmacy(setup.assignedPharmacy)
       })
       .catch(() => {
-        if (active) setError("Unable to load registered pharmacies.")
+        if (active) setError("Unable to load account setup.")
       })
       .finally(() => {
         if (active) setLoading(false)
@@ -58,18 +59,27 @@ export default function PharmacySetupPage() {
     }
   }, [])
 
-  async function saveBranch() {
-    if (!selectedId) return
-
-    setSaving(true)
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
     setError("")
 
+    if (newPassword !== confirmPassword) {
+      setError("Passwords do not match.")
+      return
+    }
+
+    setSaving(true)
+
     try {
-      const state = await assignPharmacy(selectedId)
-      setAssignedPharmacy(state.assignedPharmacy)
-      setPharmacies(state.pharmacies)
+      await completePharmacyPasswordSetup({ currentPassword, newPassword })
+      setMustChangePassword(false)
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
+      router.replace("/dashboard")
+      router.refresh()
     } catch {
-      setError("Unable to connect this branch.")
+      setError("Unable to change password. Check the temporary password and try again.")
     } finally {
       setSaving(false)
     }
@@ -80,94 +90,110 @@ export default function PharmacySetupPage() {
       <main className="flex min-h-[50vh] items-center justify-center">
         <div className="flex items-center gap-3 text-muted-foreground">
           <Loader2Icon className="size-5 animate-spin" />
-          Loading branch setup
+          Loading setup
         </div>
       </main>
     )
   }
 
   return (
-    <main className="grid gap-6 p-4 lg:grid-cols-[0.45fr_0.55fr] md:p-6">
+    <main className="grid gap-6 p-4 lg:grid-cols-[0.48fr_0.52fr] md:p-6">
       <section className="flex flex-col gap-4">
         <Card>
           <CardHeader>
-            <CardTitle>Branch setup</CardTitle>
+            <CardTitle>Secure your account</CardTitle>
             <CardDescription>
-              Connect this account to the pharmacy branch you manage.
+              Set a private password before using pharmacy tools.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
-            {assignedPharmacy ? (
+            {mustChangePassword ? (
+              <form className="grid gap-4" onSubmit={onSubmit}>
+                <label className="flex flex-col gap-2 text-sm font-medium">
+                  Temporary password
+                  <Input
+                    type="password"
+                    autoComplete="current-password"
+                    value={currentPassword}
+                    onChange={(event) => setCurrentPassword(event.target.value)}
+                    required
+                  />
+                </label>
+                <label className="flex flex-col gap-2 text-sm font-medium">
+                  New password
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    value={newPassword}
+                    onChange={(event) => setNewPassword(event.target.value)}
+                    minLength={8}
+                    required
+                  />
+                </label>
+                <label className="flex flex-col gap-2 text-sm font-medium">
+                  Confirm new password
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    minLength={8}
+                    required
+                  />
+                </label>
+                {error ? <p className="text-sm text-destructive">{error}</p> : null}
+                <Button type="submit" disabled={saving}>
+                  {saving ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <KeyRoundIcon data-icon="inline-start" />}
+                  Change password
+                </Button>
+              </form>
+            ) : (
               <div className="rounded-lg border bg-secondary/40 p-4">
                 <div className="flex items-start gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-background">
-                    <CheckCircle2Icon className="size-5 text-primary" />
-                  </div>
+                  <CheckCircle2Icon className="mt-0.5 size-5 text-primary" />
                   <div>
-                    <p className="font-medium">{branchLabel(assignedPharmacy)}</p>
+                    <p className="font-medium">Account setup complete</p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {assignedPharmacy.neighborhood}, {assignedPharmacy.address}
+                      You can use inventory and request tools for your assigned pharmacy.
                     </p>
                   </div>
                 </div>
               </div>
-            ) : (
-              <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                No branch is connected yet.
-              </div>
             )}
-
-            <label className="flex flex-col gap-2 text-sm font-medium">
-              Registered branch
-              <select
-                className="h-10 rounded-md border bg-background px-3 text-sm"
-                value={selectedId}
-                onChange={(event) => setSelectedId(event.target.value)}
-              >
-                {pharmacies.map((pharmacy) => (
-                  <option key={pharmacy.id} value={pharmacy.id}>
-                    {branchLabel(pharmacy)} - {pharmacy.neighborhood}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            {error ? <p className="text-sm text-destructive">{error}</p> : null}
-
-            <Button onClick={saveBranch} disabled={!selectedId || saving}>
-              {saving ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <ShieldCheckIcon data-icon="inline-start" />}
-              {assignedPharmacy ? "Update branch" : "Connect branch"}
-            </Button>
           </CardContent>
         </Card>
       </section>
 
       <section className="flex flex-col gap-4">
-        {selectedPharmacy ? (
+        {assignedPharmacy ? (
           <Card>
             <CardHeader>
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <CardTitle>{branchLabel(selectedPharmacy)}</CardTitle>
-                  <CardDescription>{selectedPharmacy.licenseNumber}</CardDescription>
+                  <CardTitle>{branchLabel(assignedPharmacy)}</CardTitle>
+                  <CardDescription>{assignedPharmacy.licenseNumber}</CardDescription>
                 </div>
-                <Badge variant={selectedPharmacy.isVerified ? "default" : "secondary"}>
-                  {selectedPharmacy.isVerified ? "Verified" : "Pending"}
+                <Badge variant={assignedPharmacy.isVerified ? "default" : "secondary"}>
+                  {assignedPharmacy.isVerified ? "Verified" : "Pending"}
                 </Badge>
               </div>
             </CardHeader>
             <CardContent className="grid gap-3 text-sm">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <MapPinIcon className="size-4" />
-                {selectedPharmacy.neighborhood}, {selectedPharmacy.address}
+                {assignedPharmacy.neighborhood}, {assignedPharmacy.address}
               </div>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <PhoneIcon className="size-4" />
-                {selectedPharmacy.phone}
+                {assignedPharmacy.phone}
               </div>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <TruckIcon className="size-4" />
-                {selectedPharmacy.supportsDelivery ? "Delivery supported" : "Pickup only"}
+                {assignedPharmacy.supportsDelivery ? "Delivery supported" : "Pickup only"}
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <ShieldCheckIcon className="size-4" />
+                Assigned by operations
               </div>
             </CardContent>
           </Card>
@@ -175,7 +201,7 @@ export default function PharmacySetupPage() {
           <Card>
             <CardContent className="flex flex-col items-center gap-3 py-12 text-center text-muted-foreground">
               <Building2Icon className="size-10" />
-              <p className="text-sm">No registered pharmacies are available yet.</p>
+              <p className="text-sm">No branch has been assigned to this account yet.</p>
             </CardContent>
           </Card>
         )}

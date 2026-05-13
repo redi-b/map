@@ -1,7 +1,8 @@
 import { z } from "zod"
 
-export const assignPharmacySchema = z.object({
-  pharmacyId: z.string().uuid(),
+export const completePasswordSetupSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8).max(128),
 })
 
-export type AssignPharmacyInput = z.infer<typeof assignPharmacySchema>
+export type CompletePasswordSetupInput = z.infer<typeof completePasswordSetupSchema>

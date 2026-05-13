@@ -15,6 +15,13 @@
       "when": 1778490264313,
       "tag": "0001_narrow_talkback",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778661828127,
+      "tag": "0002_outgoing_blockbuster",
+      "breakpoints": true
     }
   ]
 }

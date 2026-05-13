@@ -338,6 +338,7 @@ async function upsertPharmacist(row: (typeof pharmacistRows)[number]) {
       phone: row.phone,
       role: "pharmacist",
       isActive: true,
+      mustChangePassword: true,
     })
     .onConflictDoUpdate({
       target: profiles.authUserId,
@@ -346,6 +347,7 @@ async function upsertPharmacist(row: (typeof pharmacistRows)[number]) {
         phone: row.phone,
         role: "pharmacist",
         isActive: true,
+        mustChangePassword: true,
       },
     })
     .returning()
@@ -422,7 +424,7 @@ async function seed() {
   }
   console.log(`  ${pharmacyRows.length} pharmacies upserted`)
 
-  // Link any local pharmacist profiles to the primary seed pharmacy.
+  // Link seeded pharmacist profiles to their pharmacy.
   console.log("\n3. Pharmacy staff")
   await seedPharmacyStaff()
 
