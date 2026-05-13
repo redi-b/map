@@ -34,12 +34,25 @@ function entityLabel(log: AuditLog) {
 function summarizeDetails(details: AuditLog["details"]) {
   if (!details) return "No extra details"
 
+  const hiddenKeys = new Set(["pharmacyId", "primaryUserId", "alternativeMedicineId"])
   const parts = Object.entries(details)
-    .filter(([, value]) => value !== undefined && value !== null && value !== "")
+    .filter(([key, value]) => !hiddenKeys.has(key) && value !== undefined && value !== null && value !== "")
     .slice(0, 4)
     .map(([key, value]) => `${key.replace(/([A-Z])/g, " $1").toLowerCase()}: ${String(value)}`)
 
   return parts.length ? parts.join(" · ") : "No extra details"
+}
+
+function targetLabel(log: AuditLog) {
+  const details = log.details ?? {}
+  const label =
+    typeof details.pharmacyName === "string" ? details.pharmacyName :
+    typeof details.targetEmail === "string" ? details.targetEmail :
+    typeof details.primaryUserEmail === "string" ? details.primaryUserEmail :
+    typeof details.action === "string" ? details.action :
+    null
+
+  return label ?? (log.entityId ? `${entityLabel(log)} ${log.entityId.slice(0, 8)}` : entityLabel(log))
 }
 
 export default function AdminAuditPage() {
@@ -159,9 +172,7 @@ export default function AdminAuditPage() {
                           <Badge variant="secondary" className="w-fit">
                             {entityLabel(log)}
                           </Badge>
-                          {log.entityId ? (
-                            <span className="max-w-40 truncate text-xs text-muted-foreground">{log.entityId}</span>
-                          ) : null}
+                          <span className="max-w-56 truncate text-xs text-muted-foreground">{targetLabel(log)}</span>
                         </div>
                       </TableCell>
                       <TableCell className="max-w-md text-sm text-muted-foreground">

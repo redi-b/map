@@ -165,7 +165,12 @@ export default function PharmacyVerificationPage() {
       })
       setForm(emptyForm)
       setShowRegister(false)
-      toast.success("Pharmacy registered", "The primary pharmacist login was created.")
+      toast.action("Pharmacy registered", "Copy the primary pharmacist login before leaving this page.", {
+        title: "Copy login",
+        onClick: () => {
+          void navigator.clipboard.writeText(`${result.primaryUser.email} / ${result.primaryUser.initialPassword}`)
+        },
+      })
     } catch {
       setError("Unable to register pharmacy. Check the required fields and try again.")
       toast.error("Pharmacy not registered", "Check the required fields and try again.")

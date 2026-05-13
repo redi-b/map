@@ -11,6 +11,7 @@ import {
   LayoutDashboardIcon,
   LogOutIcon,
   PackageSearchIcon,
+  SettingsIcon,
   ShieldCheckIcon,
   type LucideIcon,
   UsersIcon,
@@ -66,7 +67,6 @@ const patientItems: SidebarNavItem[] = [
 ]
 
 const pharmacyItems: SidebarNavItem[] = [
-  { label: "Account setup", icon: Building2Icon, href: "/dashboard/pharmacy/setup" },
   { label: "Inventory", icon: PackageSearchIcon, href: "/dashboard/pharmacy/inventory" },
   { label: "Requests", icon: BellIcon, href: "/dashboard/pharmacy/requests" },
   { label: "Verification", icon: ShieldCheckIcon, href: "/dashboard/pharmacy/verification" },
@@ -226,6 +226,15 @@ export function AppSidebar({ currentUser }: { currentUser: CurrentUser }) {
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      closeMobileSidebar()
+                      router.push("/dashboard/settings")
+                    }}
+                  >
+                    <SettingsIcon />
+                    Profile settings
+                  </DropdownMenuItem>
                   <ThemeSubmenu />
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />

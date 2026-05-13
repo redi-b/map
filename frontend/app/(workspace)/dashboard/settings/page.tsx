@@ -1,0 +1,266 @@
+"use client"
+
+import { Building2Icon, CheckCircle2Icon, KeyRoundIcon, Loader2Icon, ShieldCheckIcon, UserRoundIcon } from "lucide-react"
+import { type FormEvent, useEffect, useMemo, useState } from "react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  completePharmacyPasswordSetup,
+  getCurrentUser,
+  getPharmacySetup,
+  saveProfile,
+  type CurrentUser,
+  type PharmacySetupPharmacy,
+} from "@/lib/api"
+import { getAccountLabel } from "@/lib/access"
+import { toast } from "@/lib/toast"
+
+function pharmacyLabel(pharmacy: PharmacySetupPharmacy) {
+  return [pharmacy.name, pharmacy.branchName].filter(Boolean).join(" - ")
+}
+
+export default function SettingsPage() {
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
+  const [pharmacy, setPharmacy] = useState<PharmacySetupPharmacy | null>(null)
+  const [fullName, setFullName] = useState("")
+  const [phone, setPhone] = useState("")
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [savingPassword, setSavingPassword] = useState(false)
+  const [error, setError] = useState("")
+
+  const role = currentUser?.profile?.role ?? "patient"
+  const initials = useMemo(() => {
+    const source = fullName || currentUser?.session.user.email || "MAP"
+    return source.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase()
+  }, [currentUser, fullName])
+
+  useEffect(() => {
+    let active = true
+
+    getCurrentUser()
+      .then(async (user) => {
+        if (!active || !user?.profile) return
+        setCurrentUser(user)
+        setFullName(user.profile.fullName)
+        setPhone(user.profile.phone ?? "")
+
+        if (user.profile.role === "pharmacist") {
+          const setup = await getPharmacySetup()
+          if (active) setPharmacy(setup.assignedPharmacy)
+        }
+      })
+      .catch(() => setError("Unable to load settings."))
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  async function onProfileSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!currentUser?.profile) return
+
+    setSavingProfile(true)
+    setError("")
+
+    try {
+      const updated = await saveProfile({ fullName, phone, role: currentUser.profile.role })
+      setCurrentUser((user) => user ? { ...user, profile: updated } : user)
+      toast.success("Profile updated", "Your details have been saved.")
+    } catch {
+      setError("Unable to update profile. Check the fields and try again.")
+      toast.error("Profile not updated", "Check the fields and try again.")
+    } finally {
+      setSavingProfile(false)
+    }
+  }
+
+  async function onPasswordSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError("")
+
+    if (newPassword !== confirmPassword) {
+      setError("Passwords do not match.")
+      return
+    }
+
+    setSavingPassword(true)
+
+    try {
+      await completePharmacyPasswordSetup({ currentPassword, newPassword })
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
+      setCurrentUser((user) => user?.profile ? { ...user, profile: { ...user.profile, mustChangePassword: false } } : user)
+      toast.success("Password changed", "Your account is ready.")
+    } catch {
+      setError("Unable to change password. Check the current password and try again.")
+      toast.error("Password not changed", "Check the current password and try again.")
+    } finally {
+      setSavingPassword(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <main className="flex min-h-[50vh] items-center justify-center">
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <Loader2Icon className="size-5 animate-spin" />
+          Loading settings
+        </div>
+      </main>
+    )
+  }
+
+  return (
+    <main>
+      <Tabs defaultValue="profile" orientation="vertical" className="grid gap-6 p-4 lg:grid-cols-[18rem_1fr] md:p-6">
+        <aside className="flex flex-col gap-4">
+          <Card>
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className="flex size-11 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                {initials}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate font-medium">{fullName}</p>
+                <p className="truncate text-sm text-muted-foreground">{currentUser?.session.user.email}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <TabsList className="w-full items-stretch rounded-lg border bg-card p-1" aria-label="Settings sections">
+            {([
+              ["profile", UserRoundIcon, "Profile"],
+              ["workspace", Building2Icon, "Workspace"],
+              ["security", KeyRoundIcon, "Security"],
+            ] as const).map(([value, Icon, label]) => (
+              <TabsTrigger
+                key={value}
+                value={value}
+                className="justify-start px-3 py-2"
+              >
+                <Icon data-icon="inline-start" />
+                {label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </aside>
+
+        <section className="flex flex-col gap-4">
+          {error ? <p className="rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p> : null}
+
+        <TabsContent value="profile">
+          <Card>
+            <CardHeader>
+              <CardTitle>Profile</CardTitle>
+              <CardDescription>Keep contact details accurate for pharmacy follow-up.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form className="grid gap-4 md:max-w-xl" onSubmit={onProfileSubmit}>
+                <label className="grid gap-2 text-sm font-medium">
+                  Full name
+                  <Input value={fullName} onChange={(event) => setFullName(event.target.value)} autoComplete="name" required />
+                </label>
+                <label className="grid gap-2 text-sm font-medium">
+                  Phone
+                  <Input value={phone} onChange={(event) => setPhone(event.target.value)} type="tel" autoComplete="tel" placeholder="+251XXXXXXXXX" />
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="submit" disabled={savingProfile}>
+                    {savingProfile ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <CheckCircle2Icon data-icon="inline-start" />}
+                    Save profile
+                  </Button>
+                  <Badge variant="secondary">{getAccountLabel(role)}</Badge>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="workspace">
+          <Card>
+            <CardHeader>
+              <CardTitle>{role === "pharmacist" ? "Pharmacy workspace" : role === "admin" ? "Operations workspace" : "Personal workspace"}</CardTitle>
+              <CardDescription>Workspace access is based on your assigned role.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {role === "pharmacist" && pharmacy ? (
+                <div className="grid gap-3 text-sm md:grid-cols-2">
+                  <div className="rounded-lg border p-3">
+                    <span className="text-xs text-muted-foreground">Pharmacy</span>
+                    <p className="font-medium">{pharmacyLabel(pharmacy)}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <span className="text-xs text-muted-foreground">License</span>
+                    <p className="font-medium">{pharmacy.licenseNumber}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <span className="text-xs text-muted-foreground">Address</span>
+                    <p className="font-medium">{pharmacy.neighborhood}, {pharmacy.address}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <span className="text-xs text-muted-foreground">Status</span>
+                    <p className="font-medium">{pharmacy.isVerified ? "Verified" : "Pending verification"}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-3 rounded-lg border p-4">
+                  <ShieldCheckIcon className="mt-0.5 size-5 text-primary" />
+                  <div>
+                    <p className="font-medium">{getAccountLabel(role)}</p>
+                    <p className="text-sm text-muted-foreground">No extra workspace setup is needed for this account.</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="security">
+          <Card>
+            <CardHeader>
+              <CardTitle>Security</CardTitle>
+              <CardDescription>{role === "pharmacist" ? "Change the temporary password before managing pharmacy tools." : "Password changes use your sign-in provider."}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {role === "pharmacist" ? (
+                <form className="grid gap-4 md:max-w-xl" onSubmit={onPasswordSubmit}>
+                  {currentUser?.profile?.mustChangePassword ? <Badge className="w-fit">Password setup required</Badge> : null}
+                  <label className="grid gap-2 text-sm font-medium">
+                    Current password
+                    <Input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required />
+                  </label>
+                  <label className="grid gap-2 text-sm font-medium">
+                    New password
+                    <Input type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} minLength={8} required />
+                  </label>
+                  <label className="grid gap-2 text-sm font-medium">
+                    Confirm new password
+                    <Input type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} minLength={8} required />
+                  </label>
+                  <Button type="submit" disabled={savingPassword}>
+                    {savingPassword ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <KeyRoundIcon data-icon="inline-start" />}
+                    Change password
+                  </Button>
+                </form>
+              ) : (
+                <p className="text-sm text-muted-foreground">Use the sign-in page if you need to recover account access.</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        </section>
+      </Tabs>
+    </main>
+  )
+}

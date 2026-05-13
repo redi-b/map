@@ -48,7 +48,7 @@ export default function PharmacySetupPage() {
         setAssignedPharmacy(setup.assignedPharmacy)
       })
       .catch(() => {
-        if (active) setError("Unable to load account setup.")
+        if (active) setError("Unable to load security setup.")
       })
       .finally(() => {
         if (active) setLoading(false)
@@ -152,7 +152,7 @@ export default function PharmacySetupPage() {
                 <div className="flex items-start gap-3">
                   <CheckCircle2Icon className="mt-0.5 size-5 text-primary" />
                   <div>
-                    <p className="font-medium">Account setup complete</p>
+                    <p className="font-medium">Security setup complete</p>
                     <p className="mt-1 text-sm text-muted-foreground">
                       You can use inventory and request tools for your assigned pharmacy.
                     </p>

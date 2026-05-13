@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"
@@ -466,16 +467,19 @@ export default function PharmacyInventoryPage() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <select
-              className="h-9 rounded-md border bg-background px-3 text-sm"
-              value={stockFilter}
-              onChange={(e) => setStockFilter(e.target.value)}
-            >
-              <option value="all">All stock</option>
-              <option value="in_stock">In stock</option>
-              <option value="low_stock">Low stock</option>
-              <option value="out_of_stock">Out of stock</option>
-            </select>
+            <Select value={stockFilter} onValueChange={(value) => setStockFilter(value ?? "all")}>
+              <SelectTrigger className="min-w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="all">All stock</SelectItem>
+                  <SelectItem value="in_stock">In stock</SelectItem>
+                  <SelectItem value="low_stock">Low stock</SelectItem>
+                  <SelectItem value="out_of_stock">Out of stock</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Add form */}
@@ -483,23 +487,31 @@ export default function PharmacyInventoryPage() {
             <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-secondary/50 p-4">
               <label className="flex flex-1 flex-col gap-1 text-sm font-medium">
                 Medicine
-                <select
-                  className="h-9 rounded-md border bg-background px-3 text-sm"
-                  value={addMedicineId}
-                  aria-invalid={Boolean(addErrors.medicineId)}
-                  aria-describedby={addErrors.medicineId ? "add-medicine-error" : undefined}
-                  onChange={(e) => {
-                    setAddMedicineId(e.target.value)
+                <Select
+                  value={addMedicineId || "none"}
+                  onValueChange={(value) => {
+                    setAddMedicineId(!value || value === "none" ? "" : value)
                     setAddErrors((current) => ({ ...current, medicineId: undefined }))
                   }}
                 >
-                  <option value="">Select medicine...</option>
-                  {medicines.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name} {m.strength} ({m.form})
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger
+                    className="w-full"
+                    aria-invalid={Boolean(addErrors.medicineId)}
+                    aria-describedby={addErrors.medicineId ? "add-medicine-error" : undefined}
+                  >
+                    <SelectValue placeholder="Select medicine..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="none">Select medicine...</SelectItem>
+                      {medicines.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.name} {m.strength} ({m.form})
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
                 {addErrors.medicineId ? (
                   <span id="add-medicine-error" className="text-xs text-destructive">
                     {addErrors.medicineId}
@@ -572,6 +584,16 @@ export default function PharmacyInventoryPage() {
               ) : null}
             </div>
           ) : null}
+
+          <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+            Batch import columns: <span className="font-medium text-foreground">medicine</span>,{" "}
+            <span className="font-medium text-foreground">form</span>,{" "}
+            <span className="font-medium text-foreground">strength</span>,{" "}
+            <span className="font-medium text-foreground">quantity</span>,{" "}
+            <span className="font-medium text-foreground">unit_price_etb</span>,{" "}
+            <span className="font-medium text-foreground">stock_status</span>,{" "}
+            <span className="font-medium text-foreground">expiry_date</span>. Example: Amoxicillin, capsule, 500mg, 24, 180, in_stock, 2027-06-30.
+          </div>
 
           {/* Table */}
           <Table>

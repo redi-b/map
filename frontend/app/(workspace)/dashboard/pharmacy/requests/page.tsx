@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { PrescriptionImage } from "@/components/map/prescription-image"
 import {
   getApiUrl,
   listPharmacyAvailabilityRequests,
@@ -177,8 +178,8 @@ export default function PharmacyRequestsPage() {
           const active = selected ? key === `${selected.type}:${selected.id}` : false
 
           return (
-            <button key={key} className="text-left" onClick={() => setSelectedKey(key)}>
-              <Card className={active ? "border-primary" : undefined}>
+            <button key={key} className="cursor-pointer text-left" onClick={() => setSelectedKey(key)}>
+              <Card className={active ? "bg-primary/5 ring-2 ring-primary/70" : "transition hover:bg-muted/30"}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -206,14 +207,7 @@ export default function PharmacyRequestsPage() {
           </CardHeader>
           <CardContent>
             {selected?.type === "prescription" && selected.imageUrl ? (
-              <div className="overflow-hidden rounded-lg border bg-muted">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  alt="Uploaded prescription"
-                  className="max-h-[34rem] w-full object-contain"
-                  src={getApiUrl(selected.imageUrl)}
-                />
-              </div>
+              <PrescriptionImage alt="Uploaded prescription" src={getApiUrl(selected.imageUrl)} />
             ) : (
               <div className="flex aspect-[4/5] flex-col items-center justify-center gap-3 rounded-lg border bg-muted p-6 text-center text-muted-foreground">
                 {selected?.type === "availability" ? <PackageCheckIcon className="size-8" /> : <FileImageIcon className="size-8" />}

@@ -22,7 +22,6 @@ export async function createOrUpdateProfile(authUserId: string, input: CreatePro
       .set({
         fullName: input.fullName,
         phone: input.phone || null,
-        role: input.role,
       })
       .where(eq(profiles.id, existing.id))
       .returning()

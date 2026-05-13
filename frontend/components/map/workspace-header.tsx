@@ -16,12 +16,13 @@ const routeLabels: Record<string, { eyebrow: string; title: string }> = {
   "/dashboard/prescriptions": { eyebrow: "Verification trail", title: "Prescriptions" },
   "/dashboard/adherence": { eyebrow: "Dose schedule", title: "Adherence" },
   "/dashboard/assistant": { eyebrow: "Medication guidance", title: "Medication guide" },
-  "/dashboard/pharmacy/setup": { eyebrow: "Account security", title: "Account setup" },
+  "/dashboard/pharmacy/setup": { eyebrow: "Account security", title: "Security setup" },
   "/dashboard/pharmacy/inventory": { eyebrow: "Branch operations", title: "Inventory" },
   "/dashboard/pharmacy/requests": { eyebrow: "Pharmacy desk", title: "Requests" },
   "/dashboard/pharmacy/verification": { eyebrow: "Operations review", title: "Verification" },
   "/dashboard/admin/users": { eyebrow: "Operations access", title: "Users" },
   "/dashboard/admin/audit": { eyebrow: "Operations trace", title: "Audit" },
+  "/dashboard/settings": { eyebrow: "Profile and workspace", title: "Settings" },
 }
 
 export function WorkspaceHeader({ currentUser }: { currentUser: CurrentUser }) {

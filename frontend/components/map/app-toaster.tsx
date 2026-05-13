@@ -15,10 +15,10 @@ export function AppToaster() {
         roundness: 14,
         fill: "var(--popover)",
         styles: {
-          title: "text-foreground!",
+          title: "text-foreground! font-medium!",
           description: "text-muted-foreground!",
           badge: "bg-primary/10! text-primary!",
-          button: "bg-primary! text-primary-foreground!",
+          button: "bg-primary! text-primary-foreground! shadow-sm!",
         },
       }}
     />

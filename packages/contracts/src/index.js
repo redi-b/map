@@ -7,18 +7,21 @@ export const dashboardAccessByRole = {
     "/dashboard/prescriptions",
     "/dashboard/adherence",
     "/dashboard/assistant",
+    "/dashboard/settings",
   ],
   pharmacist: [
     "/dashboard",
     "/dashboard/pharmacy/setup",
     "/dashboard/pharmacy/inventory",
     "/dashboard/pharmacy/requests",
+    "/dashboard/settings",
   ],
   admin: [
     "/dashboard",
     "/dashboard/pharmacy/verification",
     "/dashboard/admin/users",
     "/dashboard/admin/audit",
+    "/dashboard/settings",
   ],
 }
 
@@ -29,9 +32,9 @@ export const roleHomePath = {
 }
 
 export const accessAreasByRole = {
-  patient: ["dashboard", "find", "prescriptions", "adherence", "assistant"],
-  pharmacist: ["dashboard", "pharmacy.setup", "pharmacy.inventory", "pharmacy.requests"],
-  admin: ["dashboard", "pharmacy.verification", "admin.users", "admin.audit"],
+  patient: ["dashboard", "find", "prescriptions", "adherence", "assistant", "settings"],
+  pharmacist: ["dashboard", "pharmacy.setup", "pharmacy.inventory", "pharmacy.requests", "settings"],
+  admin: ["dashboard", "pharmacy.verification", "admin.users", "admin.audit", "settings"],
 }
 
 export const roleLabels = {

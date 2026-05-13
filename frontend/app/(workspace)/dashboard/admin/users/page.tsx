@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   createAdminUser,
@@ -267,19 +268,21 @@ export default function AdminUsersPage() {
               </div>
               <label className="grid gap-2 text-sm font-medium md:max-w-md">
                 Pharmacy assignment
-                <select
-                  className="h-10 rounded-md border bg-background px-3 text-sm"
-                  value={form.pharmacyId}
-                  onChange={(event) => updateForm("pharmacyId", event.target.value)}
-                  required
-                >
-                  <option value="">Choose pharmacy</option>
-                  {pharmacies.map((pharmacy) => (
-                    <option key={pharmacy.id} value={pharmacy.id}>
-                      {pharmacyLabel(pharmacy)}
-                    </option>
-                  ))}
-                </select>
+                <Select value={form.pharmacyId || "none"} onValueChange={(value) => updateForm("pharmacyId", !value || value === "none" ? "" : value)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Choose pharmacy" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="none">Choose pharmacy</SelectItem>
+                      {pharmacies.map((pharmacy) => (
+                        <SelectItem key={pharmacy.id} value={pharmacy.id}>
+                          {pharmacyLabel(pharmacy)}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
               </label>
               <div className="flex flex-wrap gap-2">
                 <Button type="submit" disabled={saving}>
@@ -365,37 +368,47 @@ export default function AdminUsersPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <select
-                            className="h-9 rounded-md border bg-background px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                          <Select
                             value={user.role}
                             disabled={updating || lockSelf}
-                            onChange={(event) => changeRole(user, event.target.value as UserRole)}
-                            aria-label={`Change role for ${user.fullName}`}
+                            onValueChange={(value) => changeRole(user, value as UserRole)}
                           >
-                            {roleOptions.map((role) => (
-                              <option key={role} value={role}>
-                                {roleLabels[role]}
-                              </option>
-                            ))}
-                          </select>
+                            <SelectTrigger size="sm" aria-label={`Change role for ${user.fullName}`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                {roleOptions.map((role) => (
+                                  <SelectItem key={role} value={role}>
+                                    {roleLabels[role]}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
                         </TableCell>
                         <TableCell>
                           {user.role === "pharmacist" ? (
                             <div className="grid min-w-56 gap-2">
-                              <select
-                                className="h-9 rounded-md border bg-background px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
-                                value={user.pharmacyId ?? ""}
+                              <Select
+                                value={user.pharmacyId ?? "none"}
                                 disabled={updating || lockSelf}
-                                onChange={(event) => updateUser(user, { pharmacyId: event.target.value || null })}
-                                aria-label={`Assign pharmacy for ${user.fullName}`}
+                                onValueChange={(value) => updateUser(user, { pharmacyId: !value || value === "none" ? null : value })}
                               >
-                                <option value="">Not assigned</option>
-                                {pharmacies.map((pharmacy) => (
-                                  <option key={pharmacy.id} value={pharmacy.id}>
-                                    {pharmacyLabel(pharmacy)}
-                                  </option>
-                                ))}
-                              </select>
+                                <SelectTrigger size="sm" className="w-full" aria-label={`Assign pharmacy for ${user.fullName}`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectGroup>
+                                    <SelectItem value="none">Not assigned</SelectItem>
+                                    {pharmacies.map((pharmacy) => (
+                                      <SelectItem key={pharmacy.id} value={pharmacy.id}>
+                                        {pharmacyLabel(pharmacy)}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectGroup>
+                                </SelectContent>
+                              </Select>
                               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                                 <Building2Icon className="size-3" />
                                 {userPharmacyLabel(user)}

@@ -1,11 +1,12 @@
-import { sileo, type SileoOptions } from "sileo"
+import { sileo, type SileoButton, type SileoOptions } from "sileo"
 
 type ToastType = "success" | "error" | "info" | "warning"
 
-function show(type: ToastType, title: string, description?: string) {
+function show(type: ToastType, title: string, description?: string, button?: SileoButton) {
   const options: SileoOptions = {
     title,
     description,
+    button,
     duration: type === "error" ? 6500 : 4200,
   }
 
@@ -16,8 +17,9 @@ function show(type: ToastType, title: string, description?: string) {
 }
 
 export const toast = {
-  success: (title: string, description?: string) => show("success", title, description),
-  error: (title: string, description?: string) => show("error", title, description),
-  info: (title: string, description?: string) => show("info", title, description),
-  warning: (title: string, description?: string) => show("warning", title, description),
+  success: (title: string, description?: string, button?: SileoButton) => show("success", title, description, button),
+  error: (title: string, description?: string, button?: SileoButton) => show("error", title, description, button),
+  info: (title: string, description?: string, button?: SileoButton) => show("info", title, description, button),
+  warning: (title: string, description?: string, button?: SileoButton) => show("warning", title, description, button),
+  action: (title: string, description: string, button: SileoButton) => sileo.action({ title, description, button, duration: 8000 }),
 }

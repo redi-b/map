@@ -6,8 +6,11 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { PrescriptionImage } from "@/components/map/prescription-image"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   createPrescription,
+  getApiUrl,
   listPatientAvailabilityRequests,
   listPrescriptionPharmacies,
   listPrescriptions,
@@ -53,6 +56,7 @@ export default function PrescriptionsPage() {
   const [uploading, setUploading] = useState(false)
 
   const selectedPharmacy = pharmacies.find((pharmacy) => pharmacy.id === pharmacyId)
+  const selectedFilePreview = useMemo(() => selectedFile ? URL.createObjectURL(selectedFile) : "", [selectedFile])
   const deliveryUnavailable = selectedPharmacy ? !selectedPharmacy.supportsDelivery : false
   const requestHistory = useMemo<PatientRequestItem[]>(() => {
     return [
@@ -89,6 +93,12 @@ export default function PrescriptionsPage() {
 
     return () => window.clearTimeout(timeout)
   }, [])
+
+  useEffect(() => {
+    return () => {
+      if (selectedFilePreview) URL.revokeObjectURL(selectedFilePreview)
+    }
+  }, [selectedFilePreview])
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -202,9 +212,18 @@ export default function PrescriptionsPage() {
                 </Badge>
               </CardHeader>
               <CardContent className="flex items-center justify-between gap-3">
-                <p className="text-sm text-muted-foreground">
-                  {item.notes || (item.type === "prescription" ? "Submitted for pharmacy review" : "Waiting for pharmacy response")}
-                </p>
+                <div className="flex min-w-0 items-center gap-3">
+                  {item.type === "prescription" && item.imageUrl ? (
+                    <PrescriptionImage
+                      alt="Prescription preview"
+                      src={getApiUrl(item.imageUrl)}
+                      className="hidden aspect-square size-16 shrink-0 sm:block [&_img]:max-h-16"
+                    />
+                  ) : null}
+                  <p className="text-sm text-muted-foreground">
+                    {item.notes || (item.type === "prescription" ? "Submitted for pharmacy review" : "Waiting for pharmacy response")}
+                  </p>
+                </div>
                 <div className="flex gap-1">
                   {item.type === "prescription" && item.imageUrl ? (
                     <Badge variant="outline">
@@ -244,33 +263,44 @@ export default function PrescriptionsPage() {
               <form className="flex flex-col gap-4" onSubmit={handleUpload}>
                 <label className="flex flex-col gap-1 text-sm font-medium">
                   Pharmacy
-                  <select
-                    className="h-10 rounded-md border bg-background px-3 text-sm"
+                  <Select
                     value={pharmacyId}
-                    onChange={(event) => {
-                      const nextPharmacy = pharmacies.find((pharmacy) => pharmacy.id === event.target.value)
-                      setPharmacyId(event.target.value)
+                    onValueChange={(value) => {
+                      if (!value) return
+                      const nextPharmacy = pharmacies.find((pharmacy) => pharmacy.id === value)
+                      setPharmacyId(value)
                       if (nextPharmacy && !nextPharmacy.supportsDelivery) {
                         setIsDelivery(false)
                         setDeliveryAddress("")
                       }
                     }}
-                    required
                   >
-                    {pharmacies.map((pharmacy) => (
-                      <option key={pharmacy.id} value={pharmacy.id}>
-                        {pharmacy.name} - {pharmacy.neighborhood}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Choose pharmacy" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {pharmacies.map((pharmacy) => (
+                          <SelectItem key={pharmacy.id} value={pharmacy.id}>
+                            {pharmacy.name} - {pharmacy.neighborhood}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
                 </label>
 
                 {/* File input */}
                 <label className="flex cursor-pointer flex-col items-center gap-3 rounded-lg border-2 border-dashed p-6 transition hover:border-primary">
-                  <FileImageIcon className="size-8 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">
-                    {selectedFile ? selectedFile.name : "Click to select prescription image"}
-                  </span>
+                  {selectedFilePreview ? (
+                    <PrescriptionImage alt="Selected prescription preview" src={selectedFilePreview} className="w-full" />
+                  ) : (
+                    <>
+                      <FileImageIcon className="size-8 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Click to select prescription image</span>
+                    </>
+                  )}
+                  {selectedFile ? <span className="text-xs text-muted-foreground">{selectedFile.name}</span> : null}
                   <input
                     type="file"
                     className="hidden"

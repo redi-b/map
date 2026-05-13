@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   createAvailabilityRequest,
   getMedicineSuggestions,
@@ -213,20 +214,21 @@ export function MedicineSearch() {
           {/* Filters row */}
           <div className="flex flex-wrap items-center gap-2">
             {neighborhoods.length > 0 ? (
-              <select
-                className="h-8 rounded-md border bg-background px-3 text-sm"
-                value={selectedNeighborhood}
-                onChange={(event) => {
-                  setSelectedNeighborhood(event.target.value)
-                }}
-              >
-                <option value="">All neighborhoods</option>
-                {neighborhoods.map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
+              <Select value={selectedNeighborhood || "all"} onValueChange={(value) => setSelectedNeighborhood(!value || value === "all" ? "" : value)}>
+                <SelectTrigger size="sm" className="min-w-44">
+                  <SelectValue placeholder="All neighborhoods" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="all">All neighborhoods</SelectItem>
+                    {neighborhoods.map((n) => (
+                      <SelectItem key={n} value={n}>
+                        {n}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             ) : null}
 
             <Button
@@ -324,9 +326,9 @@ export function MedicineSearch() {
                     {formatDistance(item.distanceMeters)} · updated {item.updatedAt}
                   </p>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline">Details</Button>
-                  <Button>Contact</Button>
+                <div className="flex flex-wrap justify-end gap-2">
+                  {item.deliveryAvailable ? <Badge variant="outline">Delivery</Badge> : null}
+                  <Badge variant="outline">{formatDistance(item.distanceMeters)}</Badge>
                 </div>
               </CardContent>
             </Card>

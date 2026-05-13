@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   createReminder,
   getTodayAdherence,
@@ -16,6 +17,7 @@ import {
   type DoseStatus,
   type TodayAdherence,
 } from "@/lib/api"
+import { toast } from "@/lib/toast"
 
 const statusConfig = {
   taken: { label: "Taken", variant: "default" as const, icon: CheckIcon, color: "text-emerald-600 dark:text-emerald-400" },
@@ -91,8 +93,10 @@ export function AdherenceTracker() {
     try {
       await updateDoseEventStatus(id, newStatus)
       await loadAdherence()
+      toast.success(newStatus === "taken" ? "Dose marked taken" : newStatus === "skipped" ? "Dose skipped" : "Dose restored")
     } catch {
       setError("Unable to update that dose.")
+      toast.error("Dose not updated", "Try again in a moment.")
     } finally {
       setSavingDoseId("")
     }
@@ -105,8 +109,10 @@ export function AdherenceTracker() {
     try {
       await resetTodayAdherence()
       await loadAdherence()
+      toast.success("Schedule reset", "Today's doses are back to upcoming.")
     } catch {
       setError("Unable to reset today's doses.")
+      toast.error("Schedule not reset", "Try again in a moment.")
     } finally {
       setSaving(false)
     }
@@ -131,8 +137,10 @@ export function AdherenceTracker() {
       setNextDoseAt(defaultNextDoseValue())
       setSupplyRemainingDays("")
       await loadAdherence()
+      toast.success("Reminder added", `${medicineName} is now in today's schedule.`)
     } catch {
       setError("Unable to save that reminder. Check the fields and try again.")
+      toast.error("Reminder not saved", "Check the fields and try again.")
     } finally {
       setSaving(false)
     }
@@ -187,10 +195,23 @@ export function AdherenceTracker() {
         </Card>
       ) : null}
 
-      <form className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-[1fr_8rem_10rem_12rem_8rem_auto]" onSubmit={handleCreateReminder}>
+      <form className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-[1fr_8rem_11rem_12rem_8rem_auto]" onSubmit={handleCreateReminder}>
         <Input value={medicineName} onChange={(event) => setMedicineName(event.target.value)} placeholder="Medicine" aria-label="Medicine name" required />
         <Input value={dosage} onChange={(event) => setDosage(event.target.value)} placeholder="Dose" aria-label="Dosage" required />
-        <Input value={frequency} onChange={(event) => setFrequency(event.target.value)} placeholder="Frequency" aria-label="Frequency" required />
+        <Select value={frequency} onValueChange={(value) => setFrequency(value ?? "Once daily")}>
+          <SelectTrigger className="w-full" aria-label="Frequency">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem value="Once daily">Once daily</SelectItem>
+              <SelectItem value="Twice daily">Twice daily</SelectItem>
+              <SelectItem value="Every 8 hours">Every 8 hours</SelectItem>
+              <SelectItem value="Before meals">Before meals</SelectItem>
+              <SelectItem value="At bedtime">At bedtime</SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
         <Input type="datetime-local" value={nextDoseAt} onChange={(event) => setNextDoseAt(event.target.value)} aria-label="Next dose time" required />
         <Input type="number" min="0" value={supplyRemainingDays} onChange={(event) => setSupplyRemainingDays(event.target.value)} placeholder="Supply" aria-label="Supply remaining days" />
         <Button type="submit" disabled={saving}>
