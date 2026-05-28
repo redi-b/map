@@ -25,10 +25,13 @@ type InboxItem =
 const statusLabels: Record<string, string> = {
   uploaded: "Uploaded",
   pending: "Pending",
+  submitted: "Submitted",
+  draft: "Draft",
   under_review: "Under review",
   verified: "Approved",
   approved: "Approved",
   rejected: "Rejected",
+  completed: "Completed",
 }
 
 function formatDate(value: string) {

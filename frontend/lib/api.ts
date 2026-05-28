@@ -127,7 +127,7 @@ export type PharmacyPrescription = {
 export type AvailabilityRequest = {
   id: string
   medicineName: string
-  status: "pending" | "under_review" | "approved" | "rejected"
+  status: "pending" | "under_review" | "approved" | "rejected" | "submitted" | "draft" | "completed"
   notes: string | null
   isDelivery: boolean
   proxyName: string | null
@@ -138,7 +138,7 @@ export type AvailabilityRequest = {
 export type PatientAvailabilityRequest = {
   id: string
   medicineName: string
-  status: "pending" | "under_review" | "approved" | "rejected"
+  status: "pending" | "under_review" | "approved" | "rejected" | "submitted" | "draft" | "completed"
   notes: string | null
   isDelivery: boolean
   proxyName: string | null

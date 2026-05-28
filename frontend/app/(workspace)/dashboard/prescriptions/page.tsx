@@ -29,10 +29,13 @@ const statusConfig: Record<PrescriptionStatus, { label: string; icon: typeof Clo
 }
 
 const requestStatusConfig = {
+  submitted: { label: "Pending", icon: ClockIcon, variant: "secondary" },
   pending: { label: "Pending", icon: ClockIcon, variant: "secondary" },
   under_review: { label: "Under review", icon: ClockIcon, variant: "secondary" },
   approved: { label: "Available", icon: CheckCircle2Icon, variant: "default" },
   rejected: { label: "Not available", icon: XCircleIcon, variant: "destructive" },
+  draft: { label: "Draft", icon: ClockIcon, variant: "outline" },
+  completed: { label: "Completed", icon: CheckCircle2Icon, variant: "default" },
 } satisfies Record<PatientAvailabilityRequest["status"], { label: string; icon: typeof ClockIcon; variant: "default" | "secondary" | "outline" | "destructive" }>
 
 type PatientRequestItem =
@@ -190,56 +193,66 @@ export default function PrescriptionsPage() {
         ) : null}
 
         {requestHistory.map((item) => {
-          const config = item.type === "prescription" ? statusConfig[item.status] : requestStatusConfig[item.status]
+          const config = (item.type === "prescription" ? statusConfig[item.status] : requestStatusConfig[item.status]) ?? {
+            label: "Pending",
+            icon: ClockIcon,
+            variant: "secondary" as const,
+          }
           const StatusIcon = config.icon
 
           return (
-            <Card key={`${item.type}-${item.id}`} className="overflow-hidden transition hover:border-primary/40 hover:shadow-sm">
-              <CardContent className="grid gap-4 p-4 md:grid-cols-[8rem_1fr] md:items-start">
+            <Card key={`${item.type}-${item.id}`} className="overflow-hidden border border-muted bg-card shadow-sm transition-all duration-200 hover:border-primary/45 hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+              <CardContent className="grid gap-4 p-4 md:grid-cols-[9rem_1fr] md:items-start">
                 <div className="md:self-start">
                   {item.type === "prescription" && item.imageUrl ? (
                     <PrescriptionImage
                       alt="Prescription preview"
                       src={getApiUrl(item.imageUrl)}
-                      className="aspect-[4/3] min-h-0 rounded-lg"
+                      className="aspect-[4/3] min-h-0 rounded-lg border border-muted/80 shadow-sm"
                       imageClassName="max-h-24"
                       label="Prescription"
                       showOverlay={false}
                     />
                   ) : item.type === "prescription" ? (
-                    <div className="flex aspect-[4/3] items-center justify-center rounded-lg border bg-background text-muted-foreground">
-                      <FileImageIcon className="size-7" />
+                    <div className="flex aspect-[4/3] items-center justify-center rounded-lg border bg-muted/20 text-muted-foreground">
+                      <FileImageIcon className="size-8 text-muted-foreground/75" />
                     </div>
                   ) : (
-                    <div className="flex aspect-[4/3] items-center justify-center rounded-lg border bg-background text-muted-foreground">
-                      <PackageSearchIcon className="size-7" />
+                    <div className="flex aspect-[4/3] items-center justify-center rounded-lg border bg-muted/20 text-muted-foreground">
+                      <PackageSearchIcon className="size-8 text-muted-foreground/75" />
                     </div>
                   )}
                 </div>
 
-                <div className="flex min-w-0 flex-col gap-4">
+                <div className="flex min-w-0 flex-col gap-3">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="mb-2 flex flex-wrap gap-2">
-                        <Badge variant={config.variant}>
-                          <StatusIcon className="mr-1 size-3.5" />
+                      <div className="mb-2.5 flex flex-wrap gap-1.5">
+                        <Badge variant={config.variant} className="px-2 py-0.5 text-[10px] font-semibold tracking-wide">
+                          <StatusIcon className="mr-1 size-3" />
                           {config.label}
                         </Badge>
-                        <Badge variant="outline">{item.type === "prescription" ? "Prescription" : "Availability"}</Badge>
-                        {item.type === "prescription" ? <Badge variant="outline">{item.neighborhood}</Badge> : null}
+                        <Badge variant="outline" className="px-2 py-0.5 text-[10px] font-medium border-muted-foreground/20 text-muted-foreground">
+                          {item.type === "prescription" ? "Prescription" : "AvailabilitySearch"}
+                        </Badge>
+                        {item.type === "prescription" ? (
+                          <Badge variant="outline" className="px-2 py-0.5 text-[10px] font-medium border-primary/20 text-primary bg-primary/5">
+                            {item.neighborhood}
+                          </Badge>
+                        ) : null}
                       </div>
-                      <CardTitle className="leading-tight">
-                        {item.type === "prescription" ? `Prescription ${item.id.slice(0, 8)}` : item.medicineName}
+                      <CardTitle className="text-base font-semibold leading-snug tracking-tight text-foreground">
+                        {item.type === "prescription" ? `Prescription #${item.id.slice(0, 8).toUpperCase()}` : item.medicineName}
                       </CardTitle>
-                      <CardDescription className="mt-1 flex flex-wrap items-center gap-2">
-                        {item.pharmacy}
-                        <span className="text-muted-foreground">·</span>
-                        {formatDate(item.createdAt)}
+                      <CardDescription className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground font-medium">
+                        <span>{item.pharmacy}</span>
+                        <span>·</span>
+                        <span>{formatDate(item.createdAt)}</span>
                       </CardDescription>
                     </div>
                   </div>
 
-                  <div className="rounded-xl border bg-muted/25 p-3 text-sm text-muted-foreground">
+                  <div className="rounded-lg border border-muted bg-muted/25 px-3 py-2.5 text-xs text-muted-foreground/90 leading-relaxed font-medium">
                     {item.notes || (item.type === "prescription" ? "Submitted for pharmacy review. The selected pharmacy will respond with approval, rejection, or next steps." : "Waiting for a pharmacy response. You can send another search request if the medicine is urgent.")}
                   </div>
                 </div>
@@ -296,23 +309,46 @@ export default function PrescriptionsPage() {
                 </label>
 
                 {/* File input */}
-                <label className="flex cursor-pointer flex-col items-center gap-3 rounded-lg border-2 border-dashed p-6 transition hover:border-primary">
+                <div className="relative">
                   {selectedFilePreview ? (
-                    <PrescriptionImage alt="Selected prescription preview" src={selectedFilePreview} className="w-full" />
+                    <div className="flex flex-col gap-3 w-full rounded-lg border border-muted bg-card p-3 shadow-sm">
+                      <div className="relative w-full overflow-hidden rounded-md border aspect-[4/3] bg-muted/20">
+                        <PrescriptionImage alt="Selected prescription preview" src={selectedFilePreview} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex items-center justify-between gap-2 px-1">
+                        <span className="text-xs font-semibold text-foreground truncate max-w-[170px]">{selectedFile?.name}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-[11px] font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 px-2"
+                          onClick={() => {
+                            setSelectedFile(null);
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
                   ) : (
-                    <>
-                      <FileImageIcon className="size-8 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">Click to select prescription image</span>
-                    </>
+                    <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/35 bg-muted/10 p-6 text-center transition-all duration-200 hover:bg-muted/25 hover:border-primary/50">
+                      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary transition-transform duration-200">
+                        <UploadIcon className="size-5" />
+                      </div>
+                      <span className="text-sm font-medium text-foreground">Select a prescription image</span>
+                      <span className="mt-1 text-[11px] text-muted-foreground">Click to browse files</span>
+                      <span className="mt-3 text-[10px] text-muted-foreground/70 border-t border-muted/80 w-full pt-2">
+                        Supports JPEG, PNG up to 5 MB
+                      </span>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                      />
+                    </label>
                   )}
-                  {selectedFile ? <span className="text-xs text-muted-foreground">{selectedFile.name}</span> : null}
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                  />
-                </label>
+                </div>
 
                 {/* Notes */}
                 <label className="flex flex-col gap-1 text-sm font-medium">
