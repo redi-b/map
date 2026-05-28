@@ -1,6 +1,6 @@
 "use client"
 
-import { HistoryIcon, Loader2Icon, ShieldCheckIcon, UserCogIcon } from "lucide-react"
+import { HistoryIcon, Loader2Icon, PackageIcon, ShieldCheckIcon, UserCogIcon } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,6 +15,10 @@ const actionLabels: Record<string, string> = {
   "user.update": "User updated",
   "prescription.review": "Prescription reviewed",
   "availability_request.respond": "Request response sent",
+  "inventory.add": "Inventory item added",
+  "inventory.update": "Inventory item updated",
+  "inventory.delete": "Inventory item deleted",
+  "inventory.batch_upload": "Batch inventory upload",
 }
 
 function formatDate(value: string) {
@@ -154,7 +158,9 @@ export default function AdminAuditPage() {
                       <TableCell>
                         <div className="flex min-w-52 items-center gap-3">
                           <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-secondary">
-                            {log.action.startsWith("user.") || log.action.startsWith("pharmacy.") ? (
+                            {log.action.startsWith("inventory.") ? (
+                              <PackageIcon className="size-4 text-muted-foreground" />
+                            ) : log.action.startsWith("user.") || log.action.startsWith("pharmacy.") ? (
                               <ShieldCheckIcon className="size-4 text-muted-foreground" />
                             ) : (
                               <UserCogIcon className="size-4 text-muted-foreground" />
