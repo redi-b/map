@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from "fastify"
 import { requireProfile } from "../lib/auth-context.js"
+import { writeAuditLog } from "../services/audit.js"
 import {
   addInventoryItem,
   batchUpsertInventoryItems,
@@ -44,6 +45,18 @@ export const inventoryRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const item = await addInventoryItem(pharmacyId, parsed.data)
+    await writeAuditLog({
+      actorProfileId: context.profile.id,
+      action: "inventory.add",
+      entityType: "inventory_item",
+      entityId: item.id,
+      details: {
+        pharmacyId,
+        medicineId: item.medicineId,
+        quantity: item.quantity,
+        unitPriceEtb: parsed.data.unitPriceEtb,
+      },
+    })
     return reply.status(201).send(item)
   })
 
@@ -63,6 +76,18 @@ export const inventoryRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const result = await batchUpsertInventoryItems(pharmacyId, parsed.data.items)
+    await writeAuditLog({
+      actorProfileId: context.profile.id,
+      action: "inventory.batch_upload",
+      entityType: "pharmacy",
+      entityId: pharmacyId,
+      details: {
+        imported: result.imported,
+        updated: result.updated,
+        skipped: result.skipped,
+        errorCount: result.errors?.length || 0,
+      },
+    })
     return reply.status(result.imported || result.updated ? 200 : 422).send(result)
   })
 
@@ -87,6 +112,19 @@ export const inventoryRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(404).send({ error: "Item not found" })
     }
 
+    await writeAuditLog({
+      actorProfileId: context.profile.id,
+      action: "inventory.update",
+      entityType: "inventory_item",
+      entityId: id,
+      details: {
+        pharmacyId,
+        quantity: parsed.data.quantity,
+        unitPriceEtb: parsed.data.unitPriceEtb,
+        stockStatus: parsed.data.stockStatus,
+      },
+    })
+
     return updated
   })
 
@@ -105,6 +143,16 @@ export const inventoryRoutes: FastifyPluginAsync = async (app) => {
     if (!deleted) {
       return reply.status(404).send({ error: "Item not found" })
     }
+
+    await writeAuditLog({
+      actorProfileId: context.profile.id,
+      action: "inventory.delete",
+      entityType: "inventory_item",
+      entityId: id,
+      details: {
+        pharmacyId,
+      },
+    })
 
     return { success: true }
   })

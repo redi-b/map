@@ -28,6 +28,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
+import { toast } from "@/lib/toast"
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"
 
@@ -336,6 +337,8 @@ export default function PharmacyInventoryPage() {
   async function handleUpdate(itemId: string) {
     setSaving(true)
     setError("")
+    const item = items.find((i) => i.id === itemId)
+    const name = item ? medicineLabel(item.medicine) : "Item"
 
     try {
       const response = await fetch(`${apiBaseUrl}/api/inventory/${itemId}`, {
@@ -353,15 +356,20 @@ export default function PharmacyInventoryPage() {
       if (!response.ok) throw new Error("Failed to update item")
       setEditingId(null)
       await fetchInventory(true)
+      toast.success("Inventory updated", `${name} has been updated successfully.`)
     } catch {
       setError("Failed to update item. Check the values and try again.")
+      toast.error("Update failed", `Failed to update ${name}. Check the values and try again.`)
     } finally {
       setSaving(false)
     }
   }
 
   async function handleDelete(itemId: string) {
-    if (!confirm("Remove this item from inventory?")) return
+    const item = items.find((i) => i.id === itemId)
+    const name = item ? medicineLabel(item.medicine) : "Item"
+
+    if (!confirm(`Remove ${name} from inventory?`)) return
 
     try {
       const response = await fetch(`${apiBaseUrl}/api/inventory/${itemId}`, {
@@ -370,17 +378,24 @@ export default function PharmacyInventoryPage() {
       })
       if (!response.ok) throw new Error("Failed to delete item")
       await fetchInventory(true)
+      toast.success("Item removed", `${name} has been deleted from inventory.`)
     } catch {
       setError("Failed to delete item")
+      toast.error("Deletion failed", `Failed to remove ${name} from inventory.`)
     }
   }
 
   async function handleAdd() {
     const validation = validateAddInventory()
-    if (!validation.isValid) return
+    if (!validation.isValid) {
+      toast.error("Validation failed", "Please correct the highlighted errors before saving.")
+      return
+    }
 
     setSaving(true)
     setError("")
+    const medicine = medicines.find((m) => m.id === addMedicineId)
+    const name = medicine ? medicineLabel(medicine) : "Item"
 
     try {
       const response = await fetch(`${apiBaseUrl}/api/inventory`, {
@@ -403,8 +418,11 @@ export default function PharmacyInventoryPage() {
 
       resetAddForm()
       await fetchInventory(true)
+      toast.success("Item added", `${name} has been added to inventory.`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add item")
+      const message = err instanceof Error ? err.message : "Failed to add item"
+      setError(message)
+      toast.error("Addition failed", message)
     } finally {
       setSaving(false)
     }
@@ -416,19 +434,23 @@ export default function PharmacyInventoryPage() {
     setImportResult(null)
 
     try {
-      const items = parseInventoryRows(await readSpreadsheetRecords(file))
+      const parsedItems = parseInventoryRows(await readSpreadsheetRecords(file))
 
-      if (items.length === 0) {
-        setError("No inventory rows found. Include medicine, quantity, and price columns.")
+      if (parsedItems.length === 0) {
+        const msg = "No inventory rows found. Include medicine, quantity, and price columns."
+        setError(msg)
+        toast.error("Import failed", msg)
         return
       }
 
-      const invalidRows = items
+      const invalidRows = parsedItems
         .map((item, index) => ({ item, row: index + 2 }))
         .filter(({ item }) => !Number.isInteger(item.quantity) || item.quantity < 0 || !Number.isFinite(item.unitPriceEtb) || item.unitPriceEtb <= 0)
 
       if (invalidRows.length > 0) {
-        setError(`Check quantity and price values before importing. First issue is on row ${invalidRows[0].row}.`)
+        const msg = `Check quantity and price values before importing. First issue is on row ${invalidRows[0].row}.`
+        setError(msg)
+        toast.error("Import failed", msg)
         return
       }
 
@@ -436,18 +458,41 @@ export default function PharmacyInventoryPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ items: items satisfies BatchInventoryRow[] }),
+        body: JSON.stringify({ items: parsedItems satisfies BatchInventoryRow[] }),
       })
 
       const result = (await response.json()) as BatchImportResult
       setImportResult(result)
 
-      if (!response.ok && result.errors?.length) setError(`Import finished with ${result.skipped} skipped row${result.skipped === 1 ? "" : "s"}.`)
-      else if (!response.ok) setError("Import failed. Check the spreadsheet columns and try again.")
+      if (response.ok) {
+        if (result.skipped > 0 || (result.errors && result.errors.length > 0)) {
+          toast.warning(
+            "Import completed with warnings",
+            `Imported ${result.imported} new, updated ${result.updated}, but skipped ${result.skipped} row(s) due to errors.`
+          )
+        } else {
+          toast.success(
+            "Import successful",
+            `Successfully imported ${result.imported} new items and updated ${result.updated} existing items.`
+          )
+        }
+      } else {
+        if (result.errors?.length) {
+          const msg = `Import finished with ${result.skipped} skipped row${result.skipped === 1 ? "" : "s"}.`
+          setError(msg)
+          toast.warning("Import warnings", msg)
+        } else {
+          const msg = "Import failed. Check the spreadsheet columns and try again."
+          setError(msg)
+          toast.error("Import failed", msg)
+        }
+      }
 
       await fetchInventory(true)
     } catch {
-      setError("Unable to read this spreadsheet. Upload a CSV or XLSX file.")
+      const msg = "Unable to read this spreadsheet. Upload a CSV or XLSX file."
+      setError(msg)
+      toast.error("Import failed", msg)
     } finally {
       setImporting(false)
       if (fileInputRef.current) fileInputRef.current.value = ""
