@@ -38,6 +38,8 @@ type PharmacyForm = {
   phone: string
   email: string
   operatingHours: string
+  latitude: string
+  longitude: string
   supportsDelivery: boolean
   primaryContactName: string
   primaryContactEmail: string
@@ -53,6 +55,8 @@ const emptyForm: PharmacyForm = {
   phone: "",
   email: "",
   operatingHours: "",
+  latitude: "",
+  longitude: "",
   supportsDelivery: false,
   primaryContactName: "",
   primaryContactEmail: "",
@@ -77,6 +81,7 @@ export default function PharmacyVerificationPage() {
   const [form, setForm] = useState<PharmacyForm>(emptyForm)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [capturingLocation, setCapturingLocation] = useState(false)
   const [updatingId, setUpdatingId] = useState("")
   const [error, setError] = useState("")
   const [createdCredentials, setCreatedCredentials] = useState<CreatedCredentials | null>(null)
@@ -119,6 +124,29 @@ export default function PharmacyVerificationPage() {
     setForm((current) => ({ ...current, [key]: value }))
   }
 
+  function captureCurrentLocation() {
+    if (!navigator.geolocation) {
+      setError("Location capture is not available in this browser.")
+      return
+    }
+
+    setCapturingLocation(true)
+    setError("")
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        updateForm("latitude", position.coords.latitude.toFixed(7))
+        updateForm("longitude", position.coords.longitude.toFixed(7))
+        setCapturingLocation(false)
+      },
+      () => {
+        setError("Unable to read current location. Enter coordinates manually.")
+        setCapturingLocation(false)
+      },
+      { enableHighAccuracy: true, timeout: 10_000 },
+    )
+  }
+
   async function toggleVerify(pharmacy: AdminPharmacy) {
     setUpdatingId(pharmacy.id)
     setError("")
@@ -149,6 +177,8 @@ export default function PharmacyVerificationPage() {
         licenseNumber: form.licenseNumber.trim(),
         phone: form.phone.trim(),
         email: form.email.trim() || undefined,
+        latitude: form.latitude ? Number(form.latitude) : undefined,
+        longitude: form.longitude ? Number(form.longitude) : undefined,
         operatingHours: form.operatingHours.trim() || undefined,
         supportsDelivery: form.supportsDelivery,
         primaryContactName: form.primaryContactName.trim(),
@@ -255,6 +285,30 @@ export default function PharmacyVerificationPage() {
                 <Input placeholder="Email" type="email" value={form.email} onChange={(event) => updateForm("email", event.target.value)} />
                 <Input placeholder="Operating hours" value={form.operatingHours} onChange={(event) => updateForm("operatingHours", event.target.value)} />
               </div>
+              <div className="grid gap-3 rounded-md border bg-background p-3 md:grid-cols-[1fr_1fr_auto]">
+                <Input
+                  type="number"
+                  step="0.0000001"
+                  min="-90"
+                  max="90"
+                  placeholder="Latitude"
+                  value={form.latitude}
+                  onChange={(event) => updateForm("latitude", event.target.value)}
+                />
+                <Input
+                  type="number"
+                  step="0.0000001"
+                  min="-180"
+                  max="180"
+                  placeholder="Longitude"
+                  value={form.longitude}
+                  onChange={(event) => updateForm("longitude", event.target.value)}
+                />
+                <Button type="button" variant="outline" onClick={captureCurrentLocation} disabled={capturingLocation}>
+                  {capturingLocation ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <MapPinIcon data-icon="inline-start" />}
+                  Use current
+                </Button>
+              </div>
               <div className="grid gap-3 rounded-md border bg-background p-3 md:grid-cols-3">
                 <Input
                   placeholder="Primary pharmacist name"
@@ -358,6 +412,10 @@ export default function PharmacyVerificationPage() {
                     <span className="flex items-center gap-2">
                       <MapPinIcon className="size-3.5" />
                       {pharmacy.neighborhood}, {pharmacy.address}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <MapPinIcon className="size-3.5" />
+                      {pharmacy.latitude !== null && pharmacy.longitude !== null ? `${pharmacy.latitude.toFixed(5)}, ${pharmacy.longitude.toFixed(5)}` : "Coordinates not set"}
                     </span>
                     <span className="flex items-center gap-2">
                       <ShieldCheckIcon className="size-3.5" />

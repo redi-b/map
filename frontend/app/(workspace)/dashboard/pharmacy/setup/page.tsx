@@ -20,6 +20,7 @@ import {
   completePharmacyPasswordSetup,
   getCurrentUser,
   getPharmacySetup,
+  updatePharmacySetupLocation,
   type PharmacySetupPharmacy,
 } from "@/lib/api"
 
@@ -34,9 +35,14 @@ export default function PharmacySetupPage() {
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [latitude, setLatitude] = useState("")
+  const [longitude, setLongitude] = useState("")
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [savingLocation, setSavingLocation] = useState(false)
+  const [capturingLocation, setCapturingLocation] = useState(false)
   const [error, setError] = useState("")
+  const [locationError, setLocationError] = useState("")
 
   useEffect(() => {
     let active = true
@@ -46,6 +52,8 @@ export default function PharmacySetupPage() {
         if (!active) return
         setMustChangePassword(Boolean(currentUser?.profile?.mustChangePassword))
         setAssignedPharmacy(setup.assignedPharmacy)
+        setLatitude(setup.assignedPharmacy?.latitude?.toString() ?? "")
+        setLongitude(setup.assignedPharmacy?.longitude?.toString() ?? "")
       })
       .catch(() => {
         if (active) setError("Unable to load security setup.")
@@ -82,6 +90,58 @@ export default function PharmacySetupPage() {
       setError("Unable to change password. Check the temporary password and try again.")
     } finally {
       setSaving(false)
+    }
+  }
+
+  function captureCurrentLocation() {
+    if (!navigator.geolocation) {
+      setLocationError("Location capture is not available in this browser.")
+      return
+    }
+
+    setCapturingLocation(true)
+    setLocationError("")
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLatitude(position.coords.latitude.toFixed(7))
+        setLongitude(position.coords.longitude.toFixed(7))
+        setCapturingLocation(false)
+      },
+      () => {
+        setLocationError("Unable to read current location. Enter coordinates manually.")
+        setCapturingLocation(false)
+      },
+      { enableHighAccuracy: true, timeout: 10_000 },
+    )
+  }
+
+  async function saveLocation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setLocationError("")
+
+    const nextLatitude = Number(latitude)
+    const nextLongitude = Number(longitude)
+
+    if (!Number.isFinite(nextLatitude) || !Number.isFinite(nextLongitude)) {
+      setLocationError("Enter valid latitude and longitude values.")
+      return
+    }
+
+    setSavingLocation(true)
+
+    try {
+      const setup = await updatePharmacySetupLocation({
+        latitude: nextLatitude,
+        longitude: nextLongitude,
+      })
+      setAssignedPharmacy(setup.assignedPharmacy)
+      setLatitude(setup.assignedPharmacy?.latitude?.toString() ?? "")
+      setLongitude(setup.assignedPharmacy?.longitude?.toString() ?? "")
+    } catch {
+      setLocationError("Unable to update pharmacy location.")
+    } finally {
+      setSavingLocation(false)
     }
   }
 
@@ -183,6 +243,49 @@ export default function PharmacySetupPage() {
                 <MapPinIcon className="size-4" />
                 {assignedPharmacy.neighborhood}, {assignedPharmacy.address}
               </div>
+              <form className="grid gap-3 rounded-lg border bg-secondary/40 p-3" onSubmit={saveLocation}>
+                <div>
+                  <p className="font-medium text-foreground">Branch location</p>
+                  <p className="text-xs text-muted-foreground">
+                    {assignedPharmacy.latitude !== null && assignedPharmacy.longitude !== null
+                      ? `${assignedPharmacy.latitude.toFixed(5)}, ${assignedPharmacy.longitude.toFixed(5)}`
+                      : "Coordinates not set"}
+                  </p>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Input
+                    type="number"
+                    step="0.0000001"
+                    min="-90"
+                    max="90"
+                    placeholder="Latitude"
+                    value={latitude}
+                    onChange={(event) => setLatitude(event.target.value)}
+                    required
+                  />
+                  <Input
+                    type="number"
+                    step="0.0000001"
+                    min="-180"
+                    max="180"
+                    placeholder="Longitude"
+                    value={longitude}
+                    onChange={(event) => setLongitude(event.target.value)}
+                    required
+                  />
+                </div>
+                {locationError ? <p className="text-xs text-destructive">{locationError}</p> : null}
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={captureCurrentLocation} disabled={capturingLocation || savingLocation}>
+                    {capturingLocation ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <MapPinIcon data-icon="inline-start" />}
+                    Use current
+                  </Button>
+                  <Button type="submit" size="sm" disabled={savingLocation}>
+                    {savingLocation ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
+                    Save location
+                  </Button>
+                </div>
+              </form>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <PhoneIcon className="size-4" />
                 {assignedPharmacy.phone}
