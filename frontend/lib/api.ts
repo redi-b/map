@@ -114,6 +114,13 @@ export type Prescription = {
   notes: string | null
   pharmacy: string
   neighborhood: string
+  latestReview: {
+    action: string
+    instructions: string | null
+    estimatedCostEtb: number | null
+    alternativeMedicineName: string | null
+    createdAt: string
+  } | null
   createdAt: string
   updatedAt: string
 }
@@ -155,6 +162,14 @@ export type PatientAvailabilityRequest = {
   proxyName: string | null
   proxyPhone: string | null
   pharmacy: string
+  latestResponse: {
+    response: string
+    pharmacy: string
+    alternativeMedicineName: string | null
+    estimatedPriceEtb: number | null
+    notes: string | null
+    createdAt: string
+  } | null
   createdAt: string
 }
 

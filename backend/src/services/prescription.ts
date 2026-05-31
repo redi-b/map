@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm"
+import { and, desc, eq, inArray } from "drizzle-orm"
 import { db } from "../db/client.js"
 import {
   prescriptions,
@@ -87,6 +87,30 @@ export async function listPrescriptions(patientProfileId: string) {
     .where(eq(prescriptions.patientProfileId, patientProfileId))
     .orderBy(desc(prescriptions.createdAt))
 
+  const prescriptionIds = rows.map((row) => row.id)
+  const reviews = prescriptionIds.length
+    ? await db
+      .select({
+        prescriptionId: prescriptionReviews.prescriptionId,
+        action: prescriptionReviews.action,
+        instructions: prescriptionReviews.instructions,
+        estimatedCostEtb: prescriptionReviews.estimatedCostEtb,
+        alternativeMedicineName: medicines.name,
+        createdAt: prescriptionReviews.createdAt,
+      })
+      .from(prescriptionReviews)
+      .leftJoin(medicines, eq(prescriptionReviews.alternativeMedicineId, medicines.id))
+      .where(inArray(prescriptionReviews.prescriptionId, prescriptionIds))
+      .orderBy(desc(prescriptionReviews.createdAt))
+    : []
+
+  const latestReviewByPrescriptionId = new Map<string, (typeof reviews)[number]>()
+  for (const review of reviews) {
+    if (!latestReviewByPrescriptionId.has(review.prescriptionId)) {
+      latestReviewByPrescriptionId.set(review.prescriptionId, review)
+    }
+  }
+
   return rows.map((r) => ({
     id: r.id,
     status: r.status,
@@ -99,6 +123,17 @@ export async function listPrescriptions(patientProfileId: string) {
     notes: r.notes,
     pharmacy: r.pharmacyName,
     neighborhood: r.pharmacyNeighborhood,
+    latestReview: latestReviewByPrescriptionId.has(r.id)
+      ? {
+        action: latestReviewByPrescriptionId.get(r.id)!.action,
+        instructions: latestReviewByPrescriptionId.get(r.id)!.instructions,
+        estimatedCostEtb: latestReviewByPrescriptionId.get(r.id)!.estimatedCostEtb
+          ? Number(latestReviewByPrescriptionId.get(r.id)!.estimatedCostEtb)
+          : null,
+        alternativeMedicineName: latestReviewByPrescriptionId.get(r.id)!.alternativeMedicineName,
+        createdAt: latestReviewByPrescriptionId.get(r.id)!.createdAt.toISOString(),
+      }
+      : null,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   }))

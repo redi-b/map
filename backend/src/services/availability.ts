@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, or } from "drizzle-orm"
+import { and, desc, eq, inArray, isNull, or } from "drizzle-orm"
 import { db } from "../db/client.js"
 import {
   availabilityRequests,
@@ -57,6 +57,32 @@ export async function listPatientRequests(patientProfileId: string) {
     .where(eq(availabilityRequests.patientProfileId, patientProfileId))
     .orderBy(desc(availabilityRequests.createdAt))
 
+  const requestIds = rows.map((row) => row.id)
+  const responses = requestIds.length
+    ? await db
+      .select({
+        requestId: requestResponses.requestId,
+        response: requestResponses.response,
+        alternativeMedicineName: requestResponses.alternativeMedicineName,
+        estimatedPriceEtb: requestResponses.estimatedPriceEtb,
+        notes: requestResponses.notes,
+        createdAt: requestResponses.createdAt,
+        pharmacyName: pharmacies.name,
+        pharmacyBranchName: pharmacies.branchName,
+      })
+      .from(requestResponses)
+      .innerJoin(pharmacies, eq(requestResponses.pharmacyId, pharmacies.id))
+      .where(inArray(requestResponses.requestId, requestIds))
+      .orderBy(desc(requestResponses.createdAt))
+    : []
+
+  const latestResponseByRequestId = new Map<string, (typeof responses)[number]>()
+  for (const response of responses) {
+    if (!latestResponseByRequestId.has(response.requestId)) {
+      latestResponseByRequestId.set(response.requestId, response)
+    }
+  }
+
   return rows.map((r) => ({
     id: r.id,
     medicineName: r.medicineName,
@@ -67,6 +93,20 @@ export async function listPatientRequests(patientProfileId: string) {
     proxyName: r.proxyName,
     proxyPhone: r.proxyPhone,
     pharmacy: r.pharmacyName ? (r.pharmacyBranchName ? `${r.pharmacyName} - ${r.pharmacyBranchName}` : r.pharmacyName) : "All pharmacies",
+    latestResponse: latestResponseByRequestId.has(r.id)
+      ? {
+        response: latestResponseByRequestId.get(r.id)!.response,
+        pharmacy: latestResponseByRequestId.get(r.id)!.pharmacyBranchName
+          ? `${latestResponseByRequestId.get(r.id)!.pharmacyName} - ${latestResponseByRequestId.get(r.id)!.pharmacyBranchName}`
+          : latestResponseByRequestId.get(r.id)!.pharmacyName,
+        alternativeMedicineName: latestResponseByRequestId.get(r.id)!.alternativeMedicineName,
+        estimatedPriceEtb: latestResponseByRequestId.get(r.id)!.estimatedPriceEtb
+          ? Number(latestResponseByRequestId.get(r.id)!.estimatedPriceEtb)
+          : null,
+        notes: latestResponseByRequestId.get(r.id)!.notes,
+        createdAt: latestResponseByRequestId.get(r.id)!.createdAt.toISOString(),
+      }
+      : null,
     createdAt: r.createdAt.toISOString(),
   }))
 }
