@@ -29,6 +29,7 @@ export type MedicineSearchResult = {
   id: string
   medicine: string
   category: string
+  pharmacyId: string
   pharmacy: string
   neighborhood: string
   distanceMeters: number
@@ -827,6 +828,7 @@ export async function listPatientAvailabilityRequests() {
 }
 
 export async function createAvailabilityRequest(input: {
+  pharmacyId?: string
   medicineName: string
   notes?: string
   isDelivery?: boolean

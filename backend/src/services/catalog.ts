@@ -147,6 +147,7 @@ export async function searchMedicines(query: MedicineSearchQuery) {
       medicineForm: medicines.form,
       medicineStrength: medicines.strength,
       category: medicines.category,
+      pharmacyId: pharmacies.id,
       pharmacy: pharmacies.name,
       pharmacyBranch: pharmacies.branchName,
       neighborhood: pharmacies.neighborhood,
@@ -176,6 +177,7 @@ export async function searchMedicines(query: MedicineSearchQuery) {
       strength: row.medicineStrength,
     }),
     category: row.category,
+    pharmacyId: row.pharmacyId,
     pharmacy: row.pharmacyBranch
       ? `${row.pharmacy} - ${row.pharmacyBranch}`
       : row.pharmacy,
