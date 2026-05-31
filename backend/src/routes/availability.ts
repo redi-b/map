@@ -24,8 +24,12 @@ export const availabilityRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(400).send({ error: "Invalid data", details: parsed.error.flatten().fieldErrors })
     }
 
-    const req = await createAvailabilityRequest(context.profile.id, parsed.data)
-    return reply.status(201).send(req)
+    try {
+      const req = await createAvailabilityRequest(context.profile.id, parsed.data)
+      return reply.status(201).send(req)
+    } catch (error) {
+      return reply.status(400).send({ error: error instanceof Error ? error.message : "Unable to submit availability request" })
+    }
   })
 
   /** GET /availability-requests — patient lists their requests. */

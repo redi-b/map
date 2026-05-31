@@ -13,6 +13,30 @@ export async function createAvailabilityRequest(
   patientProfileId: string,
   input: CreateAvailabilityRequestInput,
 ) {
+  let selectedPharmacy: { name: string; branchName: string | null; supportsDelivery: boolean } | null = null
+
+  if (input.pharmacyId) {
+    const [pharmacy] = await db
+      .select({
+        name: pharmacies.name,
+        branchName: pharmacies.branchName,
+        supportsDelivery: pharmacies.supportsDelivery,
+      })
+      .from(pharmacies)
+      .where(and(eq(pharmacies.id, input.pharmacyId), eq(pharmacies.isVerified, true)))
+      .limit(1)
+
+    if (!pharmacy) {
+      throw new Error("Selected pharmacy is not available")
+    }
+
+    if (input.isDelivery && !pharmacy.supportsDelivery) {
+      throw new Error("Selected pharmacy does not offer delivery")
+    }
+
+    selectedPharmacy = pharmacy
+  }
+
   const [request] = await db
     .insert(availabilityRequests)
     .values({
@@ -27,13 +51,6 @@ export async function createAvailabilityRequest(
     })
     .returning()
 
-  const [selectedPharmacy] = input.pharmacyId
-    ? await db
-      .select({ name: pharmacies.name, branchName: pharmacies.branchName })
-      .from(pharmacies)
-      .where(eq(pharmacies.id, input.pharmacyId))
-      .limit(1)
-    : []
   const destination = selectedPharmacy
     ? selectedPharmacy.branchName
       ? `${selectedPharmacy.name} - ${selectedPharmacy.branchName}`
@@ -140,8 +157,14 @@ export async function listPharmacyRequests(pharmacyId: string) {
       patientName: profiles.fullName,
     })
     .from(availabilityRequests)
+    .innerJoin(pharmacies, eq(pharmacies.id, pharmacyId))
     .innerJoin(profiles, eq(availabilityRequests.patientProfileId, profiles.id))
-    .where(or(eq(availabilityRequests.pharmacyId, pharmacyId), isNull(availabilityRequests.pharmacyId)))
+    .where(
+      and(
+        or(eq(availabilityRequests.pharmacyId, pharmacyId), isNull(availabilityRequests.pharmacyId)),
+        or(eq(availabilityRequests.isDelivery, false), eq(pharmacies.supportsDelivery, true)),
+      ),
+    )
     .orderBy(desc(availabilityRequests.createdAt))
 
   return rows.map((r) => ({
