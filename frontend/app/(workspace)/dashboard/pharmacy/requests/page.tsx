@@ -57,6 +57,12 @@ function getItemSubtitle(item: InboxItem) {
   return item.type === "prescription" ? item.notes || "Uploaded prescription image" : item.notes || "Availability request"
 }
 
+function getCollectionLabel(item: InboxItem) {
+  if (item.isDelivery) return "Delivery requested"
+  if (item.proxyName) return "Proxy pickup"
+  return "Self pickup"
+}
+
 export default function PharmacyRequestsPage() {
   const [prescriptions, setPrescriptions] = useState<PharmacyPrescription[]>([])
   const [availabilityRequests, setAvailabilityRequests] = useState<AvailabilityRequest[]>([])
@@ -192,6 +198,9 @@ export default function PharmacyRequestsPage() {
                         {item.type === "prescription" ? <FileImageIcon className="mr-1 size-3" /> : <PackageCheckIcon className="mr-1 size-3" />}
                         {statusLabels[item.status] ?? item.status}
                       </Badge>
+                      <Badge className="ml-2 mt-2" variant="outline">
+                        {getCollectionLabel(item)}
+                      </Badge>
                     </div>
                     <span className="text-xs text-muted-foreground">{formatDate(item.createdAt)}</span>
                   </div>
@@ -222,7 +231,7 @@ export default function PharmacyRequestsPage() {
                 {selected?.type === "availability" ? <PackageCheckIcon className="size-8" /> : <FileImageIcon className="size-8" />}
                 <p className="text-sm">
                   {selected?.type === "availability"
-                    ? `${selected.medicineName}${selected.isDelivery ? " requested for delivery" : ""}`
+                    ? `${selected.medicineName} - ${getCollectionLabel(selected)}`
                     : "No prescription image is attached."}
                 </p>
               </div>
@@ -239,10 +248,24 @@ export default function PharmacyRequestsPage() {
               </CardDescription>
             </CardHeader>
             {selected ? (
-              <CardContent className="flex flex-wrap gap-2">
-                {selected.type === "availability" && selected.isDelivery ? <Badge variant="outline">Delivery requested</Badge> : null}
-                {selected.type === "availability" && selected.proxyName ? <Badge variant="outline">Proxy pickup</Badge> : null}
-                <Badge variant={getStatusVariant(selected.status)}>{statusLabels[selected.status] ?? selected.status}</Badge>
+              <CardContent className="grid gap-3">
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline">{getCollectionLabel(selected)}</Badge>
+                  <Badge variant={getStatusVariant(selected.status)}>{statusLabels[selected.status] ?? selected.status}</Badge>
+                </div>
+                {selected.isDelivery && selected.deliveryAddress ? (
+                  <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+                    <p className="text-xs text-muted-foreground">Delivery address</p>
+                    <p className="font-medium">{selected.deliveryAddress}</p>
+                  </div>
+                ) : null}
+                {!selected.isDelivery && selected.proxyName ? (
+                  <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+                    <p className="text-xs text-muted-foreground">Pickup proxy</p>
+                    <p className="font-medium">{selected.proxyName}</p>
+                    {selected.proxyPhone ? <p className="text-muted-foreground">{selected.proxyPhone}</p> : null}
+                  </div>
+                ) : null}
               </CardContent>
             ) : null}
           </Card>

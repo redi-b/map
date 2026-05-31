@@ -42,6 +42,12 @@ type PatientRequestItem =
   | ({ type: "prescription" } & Prescription)
   | ({ type: "availability" } & PatientAvailabilityRequest)
 
+function getCollectionLabel(item: PatientRequestItem) {
+  if (item.isDelivery) return "Delivery"
+  if (item.proxyName) return "Proxy pickup"
+  return "Self pickup"
+}
+
 export default function PrescriptionsPage() {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([])
   const [availabilityRequests, setAvailabilityRequests] = useState<PatientAvailabilityRequest[]>([])
@@ -235,6 +241,9 @@ export default function PrescriptionsPage() {
                         <Badge variant="outline" className="px-2 py-0.5 text-[10px] font-medium border-muted-foreground/20 text-muted-foreground">
                           {item.type === "prescription" ? "Prescription" : "AvailabilitySearch"}
                         </Badge>
+                        <Badge variant="outline" className="px-2 py-0.5 text-[10px] font-medium border-muted-foreground/20 text-muted-foreground">
+                          {getCollectionLabel(item)}
+                        </Badge>
                         {item.type === "prescription" ? (
                           <Badge variant="outline" className="px-2 py-0.5 text-[10px] font-medium border-primary/20 text-primary bg-primary/5">
                             {item.neighborhood}
@@ -255,6 +264,19 @@ export default function PrescriptionsPage() {
                   <div className="rounded-lg border border-muted bg-muted/25 px-3 py-2.5 text-xs text-muted-foreground/90 leading-relaxed font-medium">
                     {item.notes || (item.type === "prescription" ? "Submitted for pharmacy review. The selected pharmacy will respond with approval, rejection, or next steps." : "Waiting for a pharmacy response. You can send another search request if the medicine is urgent.")}
                   </div>
+                  {item.isDelivery && item.deliveryAddress ? (
+                    <div className="rounded-lg border border-muted bg-muted/20 px-3 py-2 text-xs">
+                      <span className="text-muted-foreground">Delivery address: </span>
+                      <span className="font-medium">{item.deliveryAddress}</span>
+                    </div>
+                  ) : null}
+                  {!item.isDelivery && item.proxyName ? (
+                    <div className="rounded-lg border border-muted bg-muted/20 px-3 py-2 text-xs">
+                      <span className="text-muted-foreground">Pickup proxy: </span>
+                      <span className="font-medium">{item.proxyName}</span>
+                      {item.proxyPhone ? <span className="text-muted-foreground"> · {item.proxyPhone}</span> : null}
+                    </div>
+                  ) : null}
                 </div>
               </CardContent>
             </Card>

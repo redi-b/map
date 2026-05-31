@@ -107,6 +107,10 @@ export type Prescription = {
   status: PrescriptionStatus
   imageUrl: string | null
   imageMimeType: string | null
+  isDelivery: boolean
+  deliveryAddress: string | null
+  proxyName: string | null
+  proxyPhone: string | null
   notes: string | null
   pharmacy: string
   neighborhood: string
@@ -119,6 +123,10 @@ export type PharmacyPrescription = {
   status: PrescriptionStatus
   imageUrl: string | null
   imageMimeType: string | null
+  isDelivery: boolean
+  deliveryAddress: string | null
+  proxyName: string | null
+  proxyPhone: string | null
   notes: string | null
   patientName: string
   createdAt: string
@@ -130,7 +138,9 @@ export type AvailabilityRequest = {
   status: "pending" | "under_review" | "approved" | "rejected" | "submitted" | "draft" | "completed"
   notes: string | null
   isDelivery: boolean
+  deliveryAddress: string | null
   proxyName: string | null
+  proxyPhone: string | null
   patientName: string
   createdAt: string
 }
@@ -141,7 +151,9 @@ export type PatientAvailabilityRequest = {
   status: "pending" | "under_review" | "approved" | "rejected" | "submitted" | "draft" | "completed"
   notes: string | null
   isDelivery: boolean
+  deliveryAddress: string | null
   proxyName: string | null
+  proxyPhone: string | null
   pharmacy: string
   createdAt: string
 }
