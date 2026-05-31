@@ -34,6 +34,11 @@ const stockColors = {
 
 const popularSearches = ["Paracetamol", "Amoxicillin", "Ibuprofen", "Insulin"]
 
+type UserLocation = {
+  latitude: number
+  longitude: number
+}
+
 function formatDistance(distanceMeters: number) {
   if (distanceMeters < 1000) return `${distanceMeters}m away`
   return `${(distanceMeters / 1000).toFixed(1)}km away`
@@ -64,6 +69,8 @@ export function MedicineSearch() {
   const [inStockOnly, setInStockOnly] = useState(false)
   const [deliveryOnly, setDeliveryOnly] = useState(false)
   const [underFiveHundred, setUnderFiveHundred] = useState(false)
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null)
+  const [locating, setLocating] = useState(false)
   const [loading, setLoading] = useState(false)
   const [requesting, setRequesting] = useState(false)
   const [selectedResult, setSelectedResult] = useState<MedicineSearchResult | null>(null)
@@ -115,6 +122,31 @@ export function MedicineSearch() {
 
   const activeFilterCount = [inStockOnly, deliveryOnly, underFiveHundred, !!selectedNeighborhood].filter(Boolean).length
 
+  function captureCurrentLocation() {
+    if (!navigator.geolocation) {
+      setError("Location comparison is not available in this browser.")
+      return
+    }
+
+    setLocating(true)
+    setError("")
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        })
+        setLocating(false)
+      },
+      () => {
+        setError("Unable to read your current location. You can still compare by neighborhood.")
+        setLocating(false)
+      },
+      { enableHighAccuracy: true, timeout: 10_000 },
+    )
+  }
+
   async function runSearch(overrideQuery?: string) {
     const searchQuery = overrideQuery ?? query
     const trimmedQuery = searchQuery.trim()
@@ -131,6 +163,8 @@ export function MedicineSearch() {
       const filters: SearchFilters = {
         q: trimmedQuery,
         neighborhood: selectedNeighborhood || undefined,
+        latitude: userLocation?.latitude,
+        longitude: userLocation?.longitude,
       }
 
       const response = await searchMedicines(filters)
@@ -307,6 +341,17 @@ export function MedicineSearch() {
             >
               Under 500 ETB
             </Button>
+            <Button
+              type="button"
+              variant={userLocation ? "secondary" : "outline"}
+              size="sm"
+              className={cn(userLocation && "border-primary/60 bg-primary/15 text-primary shadow-[inset_0_0_0_1px_var(--primary)] hover:bg-primary/20 dark:bg-primary/20 dark:text-foreground")}
+              disabled={locating}
+              onClick={captureCurrentLocation}
+            >
+              {locating ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <MapPinIcon data-icon="inline-start" />}
+              Current location
+            </Button>
 
             {activeFilterCount > 0 ? (
               <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
@@ -335,6 +380,11 @@ export function MedicineSearch() {
               {selectedNeighborhood ? (
                 <span>
                   {" "}in <span className="font-medium text-foreground">{selectedNeighborhood}</span>
+                </span>
+              ) : null}
+              {userLocation ? (
+                <span>
+                  {" "}near <span className="font-medium text-foreground">your current location</span>
                 </span>
               ) : null}
             </p>
@@ -457,6 +507,10 @@ export function MedicineSearch() {
                   <span className="font-medium">
                     {(results.reduce((sum, r) => sum + r.priceEtb, 0) / results.length).toFixed(0)} ETB
                   </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Nearest</span>
+                  <span className="font-medium">{formatDistance(Math.min(...results.map((r) => r.distanceMeters)))}</span>
                 </div>
               </div>
             </CardContent>
