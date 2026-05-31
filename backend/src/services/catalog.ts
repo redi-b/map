@@ -120,6 +120,10 @@ export async function searchMedicines(query: MedicineSearchQuery) {
     filters.push(ne(inventoryItems.stockStatus, "out_of_stock"))
   }
 
+  if (query.delivery) {
+    filters.push(eq(pharmacies.supportsDelivery, true))
+  }
+
   if (query.maxPrice) {
     filters.push(lte(inventoryItems.unitPriceEtb, String(query.maxPrice)))
   }
@@ -141,6 +145,7 @@ export async function searchMedicines(query: MedicineSearchQuery) {
       neighborhood: pharmacies.neighborhood,
       latitude: pharmacies.latitude,
       longitude: pharmacies.longitude,
+      supportsDelivery: pharmacies.supportsDelivery,
       unitPriceEtb: inventoryItems.unitPriceEtb,
       stockStatus: inventoryItems.stockStatus,
       quantity: inventoryItems.quantity,
@@ -181,7 +186,7 @@ export async function searchMedicines(query: MedicineSearchQuery) {
       priceEtb: Number(row.unitPriceEtb),
       stockStatus: row.stockStatus,
       quantity: row.quantity,
-      deliveryAvailable: row.quantity > 0,
+      deliveryAvailable: row.supportsDelivery,
       expiresAt: row.expiresAt?.toISOString() ?? null,
       updatedAt: formatUpdatedAt(row.updatedAt),
     })),
