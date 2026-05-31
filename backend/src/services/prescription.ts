@@ -24,6 +24,7 @@ export async function createPrescription(
     .select({
       id: pharmacies.id,
       name: pharmacies.name,
+      branchName: pharmacies.branchName,
       supportsDelivery: pharmacies.supportsDelivery,
     })
     .from(pharmacies)
@@ -57,7 +58,7 @@ export async function createPrescription(
   // Notify pharmacy staff
   await createNotification(
     patientProfileId,
-    `Prescription submitted to ${pharmacy.name}. We'll notify you when it's reviewed.`,
+    `Prescription submitted to ${pharmacy.branchName ? `${pharmacy.name} - ${pharmacy.branchName}` : pharmacy.name}. We'll notify you when it's reviewed.`,
     "prescription",
     rx.id,
   )

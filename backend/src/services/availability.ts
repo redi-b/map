@@ -27,9 +27,22 @@ export async function createAvailabilityRequest(
     })
     .returning()
 
+  const [selectedPharmacy] = input.pharmacyId
+    ? await db
+      .select({ name: pharmacies.name, branchName: pharmacies.branchName })
+      .from(pharmacies)
+      .where(eq(pharmacies.id, input.pharmacyId))
+      .limit(1)
+    : []
+  const destination = selectedPharmacy
+    ? selectedPharmacy.branchName
+      ? `${selectedPharmacy.name} - ${selectedPharmacy.branchName}`
+      : selectedPharmacy.name
+    : "verified pharmacies"
+
   await createNotification(
     patientProfileId,
-    `Your availability request for ${input.medicineName} has been submitted.`,
+    `Your availability request for ${input.medicineName} has been submitted to ${destination}.`,
     "availability_request",
     request.id,
   )
