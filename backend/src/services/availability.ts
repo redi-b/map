@@ -151,49 +151,46 @@ export async function respondToRequest(
   responderProfileId: string,
   input: RespondToRequestInput,
 ) {
-  const [request] = await db
-    .select({
-      id: availabilityRequests.id,
-      patientProfileId: availabilityRequests.patientProfileId,
-      medicineName: availabilityRequests.medicineName,
-    })
-    .from(availabilityRequests)
-    .where(
-      and(
-        eq(availabilityRequests.id, requestId),
-        or(eq(availabilityRequests.pharmacyId, pharmacyId), isNull(availabilityRequests.pharmacyId)),
-      ),
-    )
-    .limit(1)
+  const newStatus = input.response === "available" ? "approved" : input.response === "not_available" ? "rejected" : "under_review"
+  const result = await db.transaction(async (tx) => {
+    const [request] = await tx
+      .update(availabilityRequests)
+      .set({ pharmacyId, status: newStatus, updatedAt: new Date() })
+      .where(
+        and(
+          eq(availabilityRequests.id, requestId),
+          or(eq(availabilityRequests.pharmacyId, pharmacyId), isNull(availabilityRequests.pharmacyId)),
+        ),
+      )
+      .returning({
+        id: availabilityRequests.id,
+        patientProfileId: availabilityRequests.patientProfileId,
+        medicineName: availabilityRequests.medicineName,
+      })
 
-  if (!request) {
+    if (!request) {
+      return null
+    }
+
+    const [response] = await tx
+      .insert(requestResponses)
+      .values({
+        requestId,
+        pharmacyId,
+        responderProfileId,
+        response: input.response,
+        alternativeMedicineName: input.alternativeMedicineName ?? null,
+        estimatedPriceEtb: input.estimatedPriceEtb ? String(input.estimatedPriceEtb) : null,
+        notes: input.notes ?? null,
+      })
+      .returning()
+
+    return { request, response }
+  })
+
+  if (!result) {
     return null
   }
-
-  const [response] = await db
-    .insert(requestResponses)
-    .values({
-      requestId,
-      pharmacyId,
-      responderProfileId,
-      response: input.response,
-      alternativeMedicineName: input.alternativeMedicineName ?? null,
-      estimatedPriceEtb: input.estimatedPriceEtb ? String(input.estimatedPriceEtb) : null,
-      notes: input.notes ?? null,
-    })
-    .returning()
-
-  // Update request status
-  const newStatus = input.response === "available" ? "approved" : input.response === "not_available" ? "rejected" : "under_review"
-  await db
-    .update(availabilityRequests)
-    .set({ pharmacyId, status: newStatus, updatedAt: new Date() })
-    .where(
-      and(
-        eq(availabilityRequests.id, requestId),
-        or(eq(availabilityRequests.pharmacyId, pharmacyId), isNull(availabilityRequests.pharmacyId)),
-      ),
-    )
 
   const responseLabel = input.response === "available" ? "is available" : input.response === "not_available" ? "is not available" : "has an alternative"
   const [pharmacy] = await db
@@ -208,11 +205,11 @@ export async function respondToRequest(
     : "the pharmacy"
 
   await createNotification(
-    request.patientProfileId,
-    `${pharmacyLabel} responded: ${request.medicineName} ${responseLabel}. ${input.notes ?? ""}`.trim(),
+    result.request.patientProfileId,
+    `${pharmacyLabel} responded: ${result.request.medicineName} ${responseLabel}. ${input.notes ?? ""}`.trim(),
     "availability_request",
     requestId,
   )
 
-  return response
+  return result.response
 }
