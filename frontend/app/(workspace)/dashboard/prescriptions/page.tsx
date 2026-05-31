@@ -48,6 +48,53 @@ function getCollectionLabel(item: PatientRequestItem) {
   return "Self pickup"
 }
 
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("en", {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+  }).format(value)
+}
+
+function getLatestUpdate(item: PatientRequestItem) {
+  if (item.type === "prescription") {
+    if (!item.latestReview) return null
+
+    const actionLabel =
+      item.latestReview.action === "approve"
+        ? "Approved"
+        : item.latestReview.action === "reject"
+          ? "Rejected"
+          : item.latestReview.action === "suggest_alternate"
+            ? "Alternate suggested"
+            : "Updated"
+
+    return {
+      title: `${item.pharmacy} ${actionLabel.toLowerCase()} this prescription`,
+      detail: item.latestReview.instructions,
+      price: item.latestReview.estimatedCostEtb,
+      alternative: item.latestReview.alternativeMedicineName,
+      date: item.latestReview.createdAt,
+    }
+  }
+
+  if (!item.latestResponse) return null
+
+  const responseLabel =
+    item.latestResponse.response === "available"
+      ? "Available"
+      : item.latestResponse.response === "not_available"
+        ? "Not available"
+        : "Alternate available"
+
+  return {
+    title: `${item.latestResponse.pharmacy}: ${responseLabel}`,
+    detail: item.latestResponse.notes,
+    price: item.latestResponse.estimatedPriceEtb,
+    alternative: item.latestResponse.alternativeMedicineName,
+    date: item.latestResponse.createdAt,
+  }
+}
+
 export default function PrescriptionsPage() {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([])
   const [availabilityRequests, setAvailabilityRequests] = useState<PatientAvailabilityRequest[]>([])
@@ -205,6 +252,7 @@ export default function PrescriptionsPage() {
             variant: "secondary" as const,
           }
           const StatusIcon = config.icon
+          const latestUpdate = getLatestUpdate(item)
 
           return (
             <Card key={`${item.type}-${item.id}`} className="overflow-hidden border border-muted bg-card shadow-sm transition-all duration-200 hover:border-primary/45 hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
@@ -275,6 +323,25 @@ export default function PrescriptionsPage() {
                       <span className="text-muted-foreground">Pickup proxy: </span>
                       <span className="font-medium">{item.proxyName}</span>
                       {item.proxyPhone ? <span className="text-muted-foreground"> · {item.proxyPhone}</span> : null}
+                    </div>
+                  ) : null}
+                  {latestUpdate ? (
+                    <div className="grid gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-semibold text-foreground">{latestUpdate.title}</span>
+                        <span className="text-muted-foreground">{formatDate(latestUpdate.date)}</span>
+                      </div>
+                      {latestUpdate.detail ? (
+                        <p className="leading-relaxed text-muted-foreground">{latestUpdate.detail}</p>
+                      ) : null}
+                      <div className="flex flex-wrap gap-2 text-muted-foreground">
+                        {latestUpdate.price ? (
+                          <span className="rounded-md border bg-background px-2 py-1">ETB {formatMoney(latestUpdate.price)}</span>
+                        ) : null}
+                        {latestUpdate.alternative ? (
+                          <span className="rounded-md border bg-background px-2 py-1">Alternative: {latestUpdate.alternative}</span>
+                        ) : null}
+                      </div>
                     </div>
                   ) : null}
                 </div>
