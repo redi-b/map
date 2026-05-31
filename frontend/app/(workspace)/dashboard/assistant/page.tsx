@@ -34,6 +34,7 @@ export default function AssistantPage() {
   const [deletingId, setDeletingId] = useState("")
   const [error, setError] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const tempMessageCounterRef = useRef(0)
 
   const activeSession = useMemo(
     () => sessions.find((session) => session.id === activeSessionId) ?? sessions[0] ?? null,
@@ -110,7 +111,8 @@ export default function AssistantPage() {
 
     // Cache current messages for fallback/reversion in case of failure
     const originalMessages = activeSession.messages
-    const tempUserMessageId = `temp-user-${Date.now()}`
+    tempMessageCounterRef.current += 1
+    const tempUserMessageId = `temp-user-${tempMessageCounterRef.current}`
     
     // Create optimistic user message
     const optimisticUserMessage = {
