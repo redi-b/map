@@ -39,6 +39,8 @@ type UserLocation = {
   longitude: number
 }
 
+type CollectionMethod = "pickup" | "delivery" | "proxy"
+
 function formatDistance(distanceMeters: number) {
   if (distanceMeters < 1000) return `${distanceMeters}m away`
   return `${(distanceMeters / 1000).toFixed(1)}km away`
@@ -70,6 +72,10 @@ export function MedicineSearch() {
   const [deliveryOnly, setDeliveryOnly] = useState(false)
   const [underFiveHundred, setUnderFiveHundred] = useState(false)
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null)
+  const [collectionMethod, setCollectionMethod] = useState<CollectionMethod>("pickup")
+  const [deliveryAddress, setDeliveryAddress] = useState("")
+  const [proxyName, setProxyName] = useState("")
+  const [proxyPhone, setProxyPhone] = useState("")
   const [locating, setLocating] = useState(false)
   const [loading, setLoading] = useState(false)
   const [requesting, setRequesting] = useState(false)
@@ -194,6 +200,18 @@ export function MedicineSearch() {
   async function sendAvailabilityRequest(target?: MedicineSearchResult) {
     const medicineName = (target?.medicine || searchedQuery || query).trim()
     if (!medicineName) return
+    if (collectionMethod === "delivery" && !deliveryAddress.trim()) {
+      setError("Enter a delivery address before sending a delivery request.")
+      return
+    }
+    if (collectionMethod === "delivery" && target && !target.deliveryAvailable) {
+      setError("This pharmacy is marked pickup only. Choose pickup or send a broadcast delivery request.")
+      return
+    }
+    if (collectionMethod === "proxy" && !proxyName.trim()) {
+      setError("Enter the proxy pickup name before sending the request.")
+      return
+    }
 
     setRequesting(true)
     setError("")
@@ -202,6 +220,10 @@ export function MedicineSearch() {
       await createAvailabilityRequest({
         pharmacyId: target?.pharmacyId,
         medicineName,
+        isDelivery: collectionMethod === "delivery",
+        deliveryAddress: collectionMethod === "delivery" ? deliveryAddress.trim() : undefined,
+        proxyName: collectionMethod === "proxy" ? proxyName.trim() : undefined,
+        proxyPhone: collectionMethod === "proxy" ? proxyPhone.trim() || undefined : undefined,
         notes: target
           ? `Selected from search: ${target.pharmacy}, ${formatDistance(target.distanceMeters)}, ${target.priceEtb.toFixed(2)} ETB.`
           : selectedNeighborhood ? `Preferred neighborhood: ${selectedNeighborhood}` : undefined,
@@ -479,7 +501,70 @@ export function MedicineSearch() {
               Ask verified pharmacies to confirm stock for hard-to-find medicines.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="grid gap-4">
+            <fieldset className="grid gap-2">
+              <legend className="text-sm font-medium">Collection method</legend>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="availability-collection"
+                  checked={collectionMethod === "pickup"}
+                  onChange={() => setCollectionMethod("pickup")}
+                />
+                Self pickup
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="availability-collection"
+                  checked={collectionMethod === "delivery"}
+                  onChange={() => setCollectionMethod("delivery")}
+                />
+                Delivery
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="availability-collection"
+                  checked={collectionMethod === "proxy"}
+                  onChange={() => setCollectionMethod("proxy")}
+                />
+                Proxy pickup
+              </label>
+            </fieldset>
+
+            {collectionMethod === "delivery" ? (
+              <label className="grid gap-1 text-sm font-medium">
+                Delivery address
+                <Input
+                  value={deliveryAddress}
+                  onChange={(event) => setDeliveryAddress(event.target.value)}
+                  placeholder="Street, building, or nearby landmark"
+                />
+              </label>
+            ) : null}
+
+            {collectionMethod === "proxy" ? (
+              <div className="grid gap-2 rounded-lg border bg-muted/30 p-3">
+                <label className="grid gap-1 text-sm font-medium">
+                  Proxy name
+                  <Input
+                    value={proxyName}
+                    onChange={(event) => setProxyName(event.target.value)}
+                    placeholder="Person collecting on your behalf"
+                  />
+                </label>
+                <label className="grid gap-1 text-sm font-medium">
+                  Proxy phone
+                  <Input
+                    type="tel"
+                    value={proxyPhone}
+                    onChange={(event) => setProxyPhone(event.target.value)}
+                    placeholder="+251XXXXXXXXX"
+                  />
+                </label>
+              </div>
+            ) : null}
             <Button className="w-full" disabled={!(searchedQuery || query).trim() || requesting} onClick={() => void sendAvailabilityRequest()}>
               {requesting ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <SendIcon data-icon="inline-start" />}
               Send request
