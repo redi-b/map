@@ -5,8 +5,9 @@ import { requireProfile } from "../lib/auth-context.js"
 import {
   getPharmacySetupState,
   markPasswordSetupComplete,
+  updateAssignedPharmacyLocation,
 } from "../services/pharmacy-setup.js"
-import { completePasswordSetupSchema } from "../validators/pharmacy.js"
+import { completePasswordSetupSchema, updatePharmacyLocationSchema } from "../validators/pharmacy.js"
 
 export const pharmacySetupRoutes: FastifyPluginAsync = async (app) => {
   async function handlePasswordChange(request: FastifyRequest, reply: FastifyReply) {
@@ -39,6 +40,23 @@ export const pharmacySetupRoutes: FastifyPluginAsync = async (app) => {
     if (!context) return
 
     return getPharmacySetupState(context.profile.id)
+  })
+
+  app.patch("/pharmacy/setup/location", async (request, reply) => {
+    const context = await requireProfile(request, reply, ["pharmacist"])
+    if (!context) return
+
+    const parsed = updatePharmacyLocationSchema.safeParse(request.body)
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "Invalid data", details: parsed.error.flatten().fieldErrors })
+    }
+
+    const state = await updateAssignedPharmacyLocation(context.profile.id, parsed.data)
+    if (!state) {
+      return reply.status(404).send({ error: "No pharmacy assigned" })
+    }
+
+    return state
   })
 
   app.post("/pharmacy/setup/password", handlePasswordChange)

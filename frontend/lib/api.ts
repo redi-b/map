@@ -233,6 +233,8 @@ export type AdminPharmacy = {
   neighborhood: string
   phone: string
   email: string | null
+  latitude: number | null
+  longitude: number | null
   supportsDelivery: boolean
   operatingHours: string | null
   isVerified: boolean
@@ -276,6 +278,8 @@ export type PharmacySetupPharmacy = {
   neighborhood: string
   phone: string
   email: string | null
+  latitude: number | null
+  longitude: number | null
   supportsDelivery: boolean
   operatingHours: string | null
   isVerified: boolean
@@ -389,6 +393,8 @@ export async function createAdminPharmacy(input: {
   neighborhood: string
   phone: string
   email?: string
+  latitude?: number
+  longitude?: number
   supportsDelivery: boolean
   operatingHours?: string
   isVerified?: boolean
@@ -518,6 +524,24 @@ export async function completePharmacyPasswordSetup(input: {
 
   if (!response.ok) {
     throw new Error("Unable to change password")
+  }
+
+  return response.json() as Promise<PharmacySetupState>
+}
+
+export async function updatePharmacySetupLocation(input: {
+  latitude: number
+  longitude: number
+}) {
+  const response = await fetch(`${apiBaseUrl}/api/pharmacy/setup/location`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(input),
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to update pharmacy location")
   }
 
   return response.json() as Promise<PharmacySetupState>

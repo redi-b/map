@@ -9,6 +9,8 @@ export const createAdminPharmacySchema = z.object({
   neighborhood: cleanString(z.string().min(1).max(120)),
   phone: cleanString(z.string().min(1).max(30)),
   email: cleanString(z.email()).optional().or(z.literal("")),
+  latitude: z.coerce.number().min(-90).max(90).optional(),
+  longitude: z.coerce.number().min(-180).max(180).optional(),
   supportsDelivery: z.boolean().default(false),
   operatingHours: cleanString(z.string().max(120)).optional(),
   isVerified: z.boolean().default(false),
