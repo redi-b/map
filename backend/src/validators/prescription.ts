@@ -1,6 +1,27 @@
 import { z } from "zod"
 import { cleanString } from "../lib/sanitize.js"
 
+function requireCollectionDetails<T extends { isDelivery?: boolean; deliveryAddress?: string; proxyName?: string; proxyPhone?: string }>(
+  input: T,
+  ctx: z.RefinementCtx,
+) {
+  if (input.isDelivery && !input.deliveryAddress) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["deliveryAddress"],
+      message: "Delivery address is required for delivery requests",
+    })
+  }
+
+  if (!input.proxyName && input.proxyPhone) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["proxyName"],
+      message: "Proxy name is required when a proxy phone is provided",
+    })
+  }
+}
+
 export const createPrescriptionSchema = z.object({
   pharmacyId: z.string().uuid(),
   notes: cleanString(z.string().max(500)).optional(),
@@ -8,7 +29,7 @@ export const createPrescriptionSchema = z.object({
   deliveryAddress: cleanString(z.string().max(200)).optional(),
   proxyName: cleanString(z.string().max(100)).optional(),
   proxyPhone: cleanString(z.string().max(20)).optional(),
-})
+}).superRefine(requireCollectionDetails)
 
 export const reviewPrescriptionSchema = z.object({
   action: z.enum(["approve", "reject", "request_resubmit", "suggest_alternate"]),
@@ -25,7 +46,7 @@ export const createAvailabilityRequestSchema = z.object({
   deliveryAddress: cleanString(z.string().max(200)).optional(),
   proxyName: cleanString(z.string().max(100)).optional(),
   proxyPhone: cleanString(z.string().max(20)).optional(),
-})
+}).superRefine(requireCollectionDetails)
 
 export const respondToRequestSchema = z.object({
   response: z.enum(["available", "not_available", "alternate"]),

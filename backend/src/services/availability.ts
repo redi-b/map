@@ -45,9 +45,12 @@ export async function listPatientRequests(patientProfileId: string) {
       status: availabilityRequests.status,
       notes: availabilityRequests.notes,
       isDelivery: availabilityRequests.isDelivery,
+      deliveryAddress: availabilityRequests.deliveryAddress,
       proxyName: availabilityRequests.proxyName,
+      proxyPhone: availabilityRequests.proxyPhone,
       createdAt: availabilityRequests.createdAt,
       pharmacyName: pharmacies.name,
+      pharmacyBranchName: pharmacies.branchName,
     })
     .from(availabilityRequests)
     .leftJoin(pharmacies, eq(availabilityRequests.pharmacyId, pharmacies.id))
@@ -60,8 +63,10 @@ export async function listPatientRequests(patientProfileId: string) {
     status: r.status,
     notes: r.notes,
     isDelivery: r.isDelivery,
+    deliveryAddress: r.deliveryAddress,
     proxyName: r.proxyName,
-    pharmacy: r.pharmacyName ?? "All pharmacies",
+    proxyPhone: r.proxyPhone,
+    pharmacy: r.pharmacyName ? (r.pharmacyBranchName ? `${r.pharmacyName} - ${r.pharmacyBranchName}` : r.pharmacyName) : "All pharmacies",
     createdAt: r.createdAt.toISOString(),
   }))
 }
@@ -75,7 +80,9 @@ export async function listPharmacyRequests(pharmacyId: string) {
       status: availabilityRequests.status,
       notes: availabilityRequests.notes,
       isDelivery: availabilityRequests.isDelivery,
+      deliveryAddress: availabilityRequests.deliveryAddress,
       proxyName: availabilityRequests.proxyName,
+      proxyPhone: availabilityRequests.proxyPhone,
       createdAt: availabilityRequests.createdAt,
       patientName: profiles.fullName,
     })
@@ -90,7 +97,9 @@ export async function listPharmacyRequests(pharmacyId: string) {
     status: r.status,
     notes: r.notes,
     isDelivery: r.isDelivery,
+    deliveryAddress: r.deliveryAddress,
     proxyName: r.proxyName,
+    proxyPhone: r.proxyPhone,
     patientName: r.patientName,
     createdAt: r.createdAt.toISOString(),
   }))
@@ -147,9 +156,20 @@ export async function respondToRequest(
     )
 
   const responseLabel = input.response === "available" ? "is available" : input.response === "not_available" ? "is not available" : "has an alternative"
+  const [pharmacy] = await db
+    .select({ name: pharmacies.name, branchName: pharmacies.branchName })
+    .from(pharmacies)
+    .where(eq(pharmacies.id, pharmacyId))
+    .limit(1)
+  const pharmacyLabel = pharmacy
+    ? pharmacy.branchName
+      ? `${pharmacy.name} - ${pharmacy.branchName}`
+      : pharmacy.name
+    : "the pharmacy"
+
   await createNotification(
     request.patientProfileId,
-    `${request.medicineName} ${responseLabel} at the pharmacy. ${input.notes ?? ""}`.trim(),
+    `${pharmacyLabel} responded: ${request.medicineName} ${responseLabel}. ${input.notes ?? ""}`.trim(),
     "availability_request",
     requestId,
   )

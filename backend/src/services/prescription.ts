@@ -46,6 +46,10 @@ export async function createPrescription(
       status: "uploaded",
       imageUrl: image?.imageUrl ?? null,
       imageMimeType: image?.mimeType ?? null,
+      isDelivery: input.isDelivery,
+      deliveryAddress: input.deliveryAddress ?? null,
+      proxyName: input.proxyName ?? null,
+      proxyPhone: input.proxyPhone ?? null,
       notes: input.notes ?? null,
     })
     .returning()
@@ -68,6 +72,10 @@ export async function listPrescriptions(patientProfileId: string) {
       status: prescriptions.status,
       imageUrl: prescriptions.imageUrl,
       imageMimeType: prescriptions.imageMimeType,
+      isDelivery: prescriptions.isDelivery,
+      deliveryAddress: prescriptions.deliveryAddress,
+      proxyName: prescriptions.proxyName,
+      proxyPhone: prescriptions.proxyPhone,
       notes: prescriptions.notes,
       createdAt: prescriptions.createdAt,
       updatedAt: prescriptions.updatedAt,
@@ -84,6 +92,10 @@ export async function listPrescriptions(patientProfileId: string) {
     status: r.status,
     imageUrl: r.imageUrl ? `/api/prescriptions/${r.id}/image` : null,
     imageMimeType: r.imageMimeType,
+    isDelivery: r.isDelivery,
+    deliveryAddress: r.deliveryAddress,
+    proxyName: r.proxyName,
+    proxyPhone: r.proxyPhone,
     notes: r.notes,
     pharmacy: r.pharmacyName,
     neighborhood: r.pharmacyNeighborhood,
@@ -100,6 +112,10 @@ export async function listPharmacyPrescriptions(pharmacyId: string) {
       status: prescriptions.status,
       imageUrl: prescriptions.imageUrl,
       imageMimeType: prescriptions.imageMimeType,
+      isDelivery: prescriptions.isDelivery,
+      deliveryAddress: prescriptions.deliveryAddress,
+      proxyName: prescriptions.proxyName,
+      proxyPhone: prescriptions.proxyPhone,
       notes: prescriptions.notes,
       createdAt: prescriptions.createdAt,
       patientName: profiles.fullName,
@@ -114,6 +130,10 @@ export async function listPharmacyPrescriptions(pharmacyId: string) {
     status: r.status,
     imageUrl: r.imageUrl ? `/api/prescriptions/${r.id}/image` : null,
     imageMimeType: r.imageMimeType,
+    isDelivery: r.isDelivery,
+    deliveryAddress: r.deliveryAddress,
+    proxyName: r.proxyName,
+    proxyPhone: r.proxyPhone,
     notes: r.notes,
     patientName: r.patientName,
     createdAt: r.createdAt.toISOString(),
@@ -148,16 +168,22 @@ export async function reviewPrescription(
 
   // Notify patient
   const [rx] = await db
-    .select({ patientProfileId: prescriptions.patientProfileId })
+    .select({
+      patientProfileId: prescriptions.patientProfileId,
+      pharmacyName: pharmacies.name,
+      pharmacyBranchName: pharmacies.branchName,
+    })
     .from(prescriptions)
+    .innerJoin(pharmacies, eq(prescriptions.pharmacyId, pharmacies.id))
     .where(eq(prescriptions.id, prescriptionId))
     .limit(1)
 
   if (rx) {
     const actionLabel = input.action === "approve" ? "approved" : input.action === "reject" ? "rejected" : "updated"
+    const pharmacyLabel = rx.pharmacyBranchName ? `${rx.pharmacyName} - ${rx.pharmacyBranchName}` : rx.pharmacyName
     await createNotification(
       rx.patientProfileId,
-      `Your prescription has been ${actionLabel}. ${input.instructions ?? ""}`.trim(),
+      `${pharmacyLabel} ${actionLabel} your prescription. ${input.instructions ?? ""}`.trim(),
       "prescription",
       prescriptionId,
     )
