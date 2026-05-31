@@ -191,8 +191,8 @@ export function MedicineSearch() {
     setSelectedNeighborhood("")
   }
 
-  async function sendAvailabilityRequest() {
-    const medicineName = (searchedQuery || query).trim()
+  async function sendAvailabilityRequest(target?: MedicineSearchResult) {
+    const medicineName = (target?.medicine || searchedQuery || query).trim()
     if (!medicineName) return
 
     setRequesting(true)
@@ -200,10 +200,16 @@ export function MedicineSearch() {
 
     try {
       await createAvailabilityRequest({
+        pharmacyId: target?.pharmacyId,
         medicineName,
-        notes: selectedNeighborhood ? `Preferred neighborhood: ${selectedNeighborhood}` : undefined,
+        notes: target
+          ? `Selected from search: ${target.pharmacy}, ${formatDistance(target.distanceMeters)}, ${target.priceEtb.toFixed(2)} ETB.`
+          : selectedNeighborhood ? `Preferred neighborhood: ${selectedNeighborhood}` : undefined,
       })
-      toast.success("Request sent", "Verified pharmacies can now respond from their queue.")
+      toast.success(
+        "Request sent",
+        target ? `${target.pharmacy} can respond from their queue.` : "Verified pharmacies can now respond from their queue.",
+      )
     } catch {
       setError("Unable to send this request right now.")
       toast.error("Request not sent", "Try again in a moment.")
@@ -572,6 +578,10 @@ export function MedicineSearch() {
                   <div className="rounded-xl border bg-primary/5 p-3 text-muted-foreground">
                     Updated {selectedResult.updatedAt}. Stock can change quickly, so call ahead or use a broadcast request when availability is critical.
                   </div>
+                  <Button type="button" disabled={requesting} onClick={() => void sendAvailabilityRequest(selectedResult)}>
+                    {requesting ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <SendIcon data-icon="inline-start" />}
+                    Request this pharmacy
+                  </Button>
                 </div>
               </div>
             </>
