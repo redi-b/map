@@ -81,8 +81,7 @@ function estimateDistanceMeters(row: {
   latitude: string | null
   longitude: string | null
   neighborhood: string
-}, originNeighborhood?: string) {
-  const origin = getNeighborhoodCenter(originNeighborhood) ?? defaultSearchCenter
+}, origin: Coordinates) {
   const destination =
     parseCoordinates(row.latitude, row.longitude) ??
     getNeighborhoodCenter(row.neighborhood)
@@ -92,6 +91,14 @@ function estimateDistanceMeters(row: {
   }
 
   return haversineMeters(origin, destination)
+}
+
+function getSearchOrigin(query: MedicineSearchQuery) {
+  if (query.latitude !== undefined && query.longitude !== undefined) {
+    return { latitude: query.latitude, longitude: query.longitude }
+  }
+
+  return getNeighborhoodCenter(query.neighborhood) ?? defaultSearchCenter
 }
 
 export async function searchMedicines(query: MedicineSearchQuery) {
@@ -160,36 +167,41 @@ export async function searchMedicines(query: MedicineSearchQuery) {
 
   const rows = where ? await selectQuery.where(where) : await selectQuery
 
+  const origin = getSearchOrigin(query)
+  const results = rows.map((row) => ({
+    id: row.id,
+    medicine: formatMedicineName({
+      name: row.medicineName,
+      form: row.medicineForm,
+      strength: row.medicineStrength,
+    }),
+    category: row.category,
+    pharmacy: row.pharmacyBranch
+      ? `${row.pharmacy} - ${row.pharmacyBranch}`
+      : row.pharmacy,
+    neighborhood: row.neighborhood,
+    distanceMeters: estimateDistanceMeters({
+      latitude: row.latitude,
+      longitude: row.longitude,
+      neighborhood: row.neighborhood,
+    }, origin),
+    priceEtb: Number(row.unitPriceEtb),
+    stockStatus: row.stockStatus,
+    quantity: row.quantity,
+    deliveryAvailable: row.supportsDelivery,
+    expiresAt: row.expiresAt?.toISOString() ?? null,
+    updatedAt: formatUpdatedAt(row.updatedAt),
+  })).sort((a, b) => a.distanceMeters - b.distanceMeters || a.priceEtb - b.priceEtb)
+
   return {
     query: {
       q: query.q,
       neighborhood: query.neighborhood,
       inStock: query.inStock,
+      latitude: query.latitude,
+      longitude: query.longitude,
     },
-    results: rows.map((row) => ({
-      id: row.id,
-      medicine: formatMedicineName({
-        name: row.medicineName,
-        form: row.medicineForm,
-        strength: row.medicineStrength,
-      }),
-      category: row.category,
-      pharmacy: row.pharmacyBranch
-        ? `${row.pharmacy} - ${row.pharmacyBranch}`
-        : row.pharmacy,
-      neighborhood: row.neighborhood,
-      distanceMeters: estimateDistanceMeters({
-        latitude: row.latitude,
-        longitude: row.longitude,
-        neighborhood: row.neighborhood,
-      }, query.neighborhood),
-      priceEtb: Number(row.unitPriceEtb),
-      stockStatus: row.stockStatus,
-      quantity: row.quantity,
-      deliveryAvailable: row.supportsDelivery,
-      expiresAt: row.expiresAt?.toISOString() ?? null,
-      updatedAt: formatUpdatedAt(row.updatedAt),
-    })),
+    results,
   }
 }
 

@@ -295,6 +295,8 @@ export type SearchFilters = {
   inStock?: boolean
   delivery?: boolean
   maxPrice?: number
+  latitude?: number
+  longitude?: number
 }
 
 export async function searchMedicines(filters: SearchFilters | string) {
@@ -308,6 +310,8 @@ export async function searchMedicines(filters: SearchFilters | string) {
     if (filters.inStock) params.set("inStock", "true")
     if (filters.delivery) params.set("delivery", "true")
     if (filters.maxPrice) params.set("maxPrice", String(filters.maxPrice))
+    if (filters.latitude !== undefined) params.set("latitude", String(filters.latitude))
+    if (filters.longitude !== undefined) params.set("longitude", String(filters.longitude))
   }
 
   const response = await fetch(`${apiBaseUrl}/api/medicines/search?${params}`, {
