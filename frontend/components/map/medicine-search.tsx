@@ -139,11 +139,14 @@ export function MedicineSearch() {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setUserLocation({
+        const nextLocation = {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
-        })
+        }
+
+        setUserLocation(nextLocation)
         setLocating(false)
+        if (hasSearched) void runSearch(searchedQuery || query, nextLocation)
       },
       () => {
         setError("Unable to read your current location. You can still compare by neighborhood.")
@@ -153,9 +156,10 @@ export function MedicineSearch() {
     )
   }
 
-  async function runSearch(overrideQuery?: string) {
+  async function runSearch(overrideQuery?: string, overrideLocation?: UserLocation | null) {
     const searchQuery = overrideQuery ?? query
     const trimmedQuery = searchQuery.trim()
+    const searchLocation = overrideLocation ?? userLocation
 
     if (trimmedQuery.length < 2) {
       setError("Enter at least 2 characters to search.")
@@ -172,8 +176,8 @@ export function MedicineSearch() {
         inStock: inStockOnly || undefined,
         delivery: deliveryOnly || undefined,
         maxPrice: underFiveHundred ? 500 : undefined,
-        latitude: userLocation?.latitude,
-        longitude: userLocation?.longitude,
+        latitude: searchLocation?.latitude,
+        longitude: searchLocation?.longitude,
       }
 
       const response = await searchMedicines(filters)
