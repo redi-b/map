@@ -41,6 +41,12 @@ type UserLocation = {
 
 type CollectionMethod = "pickup" | "delivery" | "proxy"
 
+const collectionMethodLabels = {
+  pickup: "Self pickup",
+  delivery: "Delivery",
+  proxy: "Proxy pickup",
+} satisfies Record<CollectionMethod, string>
+
 function formatDistance(distanceMeters: number) {
   if (distanceMeters < 1000) return `${distanceMeters}m away`
   return `${(distanceMeters / 1000).toFixed(1)}km away`
@@ -81,6 +87,7 @@ export function MedicineSearch() {
   const [requesting, setRequesting] = useState(false)
   const [selectedResult, setSelectedResult] = useState<MedicineSearchResult | null>(null)
   const [error, setError] = useState("")
+  const [sheetError, setSheetError] = useState("")
   const [hasSearched, setHasSearched] = useState(false)
 
   // Load available neighborhoods for filter
@@ -204,24 +211,43 @@ export function MedicineSearch() {
     setSelectedNeighborhood("")
   }
 
+  function updateCollectionMethod(method: CollectionMethod) {
+    setCollectionMethod(method)
+    setError("")
+    setSheetError("")
+  }
+
+  function getBroadcastDestination() {
+    return collectionMethod === "delivery" ? "delivery-capable pharmacies" : "verified pharmacies"
+  }
+
+  function getRequestValidationMessage(target?: MedicineSearchResult) {
+    if (collectionMethod === "delivery" && !deliveryAddress.trim()) {
+      return "Enter a delivery address before sending a delivery request."
+    }
+    if (collectionMethod === "delivery" && target && !target.deliveryAvailable) {
+      return "This pharmacy is pickup only. Switch to self pickup or proxy pickup, or send a broadcast delivery request."
+    }
+    if (collectionMethod === "proxy" && !proxyName.trim()) {
+      return "Enter the proxy pickup name before sending the request."
+    }
+    return ""
+  }
+
   async function sendAvailabilityRequest(target?: MedicineSearchResult) {
     const medicineName = (target?.medicine || searchedQuery || query).trim()
     if (!medicineName) return
-    if (collectionMethod === "delivery" && !deliveryAddress.trim()) {
-      setError("Enter a delivery address before sending a delivery request.")
-      return
-    }
-    if (collectionMethod === "delivery" && target && !target.deliveryAvailable) {
-      setError("This pharmacy is marked pickup only. Choose pickup or send a broadcast delivery request.")
-      return
-    }
-    if (collectionMethod === "proxy" && !proxyName.trim()) {
-      setError("Enter the proxy pickup name before sending the request.")
+
+    const validationMessage = getRequestValidationMessage(target)
+    if (validationMessage) {
+      if (target) setSheetError(validationMessage)
+      else setError(validationMessage)
       return
     }
 
     setRequesting(true)
     setError("")
+    setSheetError("")
 
     try {
       await createAvailabilityRequest({
@@ -237,10 +263,11 @@ export function MedicineSearch() {
       })
       toast.success(
         "Request sent",
-        target ? `${target.pharmacy} can respond from their queue.` : "Verified pharmacies can now respond from their queue.",
+        target ? `Sent to ${target.pharmacy}.` : `Sent to ${getBroadcastDestination()}.`,
       )
     } catch {
-      setError("Unable to send this request right now.")
+      if (target) setSheetError("Unable to send this request to the selected pharmacy right now.")
+      else setError("Unable to send this broadcast request right now.")
       toast.error("Request not sent", "Try again in a moment.")
     } finally {
       setRequesting(false)
@@ -462,7 +489,15 @@ export function MedicineSearch() {
                 <p className="text-sm text-muted-foreground">
                   {formatDistance(item.distanceMeters)} · updated {item.updatedAt} · {formatExpiry(item.expiresAt)}
                 </p>
-                <Button type="button" variant="outline" size="sm" onClick={() => setSelectedResult(item)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSheetError("")
+                    setSelectedResult(item)
+                  }}
+                >
                   <InfoIcon data-icon="inline-start" />
                   View details
                 </Button>
@@ -503,9 +538,11 @@ export function MedicineSearch() {
       <div className="flex flex-col gap-4">
         <Card className="h-fit">
           <CardHeader>
-            <CardTitle>Stock request</CardTitle>
+            <CardTitle>Broadcast stock request</CardTitle>
             <CardDescription>
-              Ask verified pharmacies to confirm stock for hard-to-find medicines.
+              {collectionMethod === "delivery"
+                ? "Delivery broadcasts go only to pharmacies marked as delivery-capable."
+                : "Ask verified pharmacies to confirm stock for hard-to-find medicines."}
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
@@ -516,7 +553,7 @@ export function MedicineSearch() {
                   type="radio"
                   name="availability-collection"
                   checked={collectionMethod === "pickup"}
-                  onChange={() => setCollectionMethod("pickup")}
+                  onChange={() => updateCollectionMethod("pickup")}
                 />
                 Self pickup
               </label>
@@ -525,7 +562,7 @@ export function MedicineSearch() {
                   type="radio"
                   name="availability-collection"
                   checked={collectionMethod === "delivery"}
-                  onChange={() => setCollectionMethod("delivery")}
+                  onChange={() => updateCollectionMethod("delivery")}
                 />
                 Delivery
               </label>
@@ -534,7 +571,7 @@ export function MedicineSearch() {
                   type="radio"
                   name="availability-collection"
                   checked={collectionMethod === "proxy"}
-                  onChange={() => setCollectionMethod("proxy")}
+                  onChange={() => updateCollectionMethod("proxy")}
                 />
                 Proxy pickup
               </label>
@@ -545,7 +582,11 @@ export function MedicineSearch() {
                 Delivery address
                 <Input
                   value={deliveryAddress}
-                  onChange={(event) => setDeliveryAddress(event.target.value)}
+                  onChange={(event) => {
+                    setDeliveryAddress(event.target.value)
+                    setError("")
+                    setSheetError("")
+                  }}
                   placeholder="Street, building, or nearby landmark"
                 />
               </label>
@@ -557,7 +598,11 @@ export function MedicineSearch() {
                   Proxy name
                   <Input
                     value={proxyName}
-                    onChange={(event) => setProxyName(event.target.value)}
+                    onChange={(event) => {
+                      setProxyName(event.target.value)
+                      setError("")
+                      setSheetError("")
+                    }}
                     placeholder="Person collecting on your behalf"
                   />
                 </label>
@@ -566,15 +611,22 @@ export function MedicineSearch() {
                   <Input
                     type="tel"
                     value={proxyPhone}
-                    onChange={(event) => setProxyPhone(event.target.value)}
+                    onChange={(event) => {
+                      setProxyPhone(event.target.value)
+                      setError("")
+                      setSheetError("")
+                    }}
                     placeholder="+251XXXXXXXXX"
                   />
                 </label>
               </div>
             ) : null}
+            <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+              This sends a {collectionMethodLabels[collectionMethod].toLowerCase()} request to {getBroadcastDestination()}.
+            </div>
             <Button className="w-full" disabled={!(searchedQuery || query).trim() || requesting} onClick={() => void sendAvailabilityRequest()}>
               {requesting ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <SendIcon data-icon="inline-start" />}
-              Send request
+              Send broadcast
             </Button>
           </CardContent>
         </Card>
@@ -616,7 +668,7 @@ export function MedicineSearch() {
         ) : null}
       </div>
 
-      <Sheet open={Boolean(selectedResult)} onOpenChange={(open) => { if (!open) setSelectedResult(null) }}>
+      <Sheet open={Boolean(selectedResult)} onOpenChange={(open) => { if (!open) { setSelectedResult(null); setSheetError("") } }}>
         <SheetContent className="overflow-y-auto sm:max-w-lg">
           {selectedResult ? (
             <>
@@ -670,9 +722,18 @@ export function MedicineSearch() {
                   <div className="rounded-xl border bg-primary/5 p-3 text-muted-foreground">
                     Updated {selectedResult.updatedAt}. Stock can change quickly, so call ahead or use a broadcast request when availability is critical.
                   </div>
-                  <Button type="button" disabled={requesting} onClick={() => void sendAvailabilityRequest(selectedResult)}>
+                  <div className="rounded-xl border bg-muted/30 p-3 text-muted-foreground">
+                    This sends a {collectionMethodLabels[collectionMethod].toLowerCase()} request only to {selectedResult.pharmacy}.
+                  </div>
+                  {collectionMethod === "delivery" && !selectedResult.deliveryAvailable ? (
+                    <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+                      This pharmacy is pickup only. Switch to self pickup or proxy pickup, or use the broadcast delivery request.
+                    </div>
+                  ) : null}
+                  {sheetError ? <p className="text-sm text-destructive">{sheetError}</p> : null}
+                  <Button type="button" disabled={requesting || (collectionMethod === "delivery" && !selectedResult.deliveryAvailable)} onClick={() => void sendAvailabilityRequest(selectedResult)}>
                     {requesting ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <SendIcon data-icon="inline-start" />}
-                    Request this pharmacy
+                    Send to this pharmacy
                   </Button>
                 </div>
               </div>

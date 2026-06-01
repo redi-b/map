@@ -219,7 +219,9 @@ async function getPatientDashboard(profile: CurrentProfile): Promise<DashboardSu
       label: item.medicineName,
       detail: branchLabel({ name: item.pharmacyName, branchName: item.pharmacyBranchName })
         ? `${collectionLabel(item)} request at ${branchLabel({ name: item.pharmacyName, branchName: item.pharmacyBranchName })}`
-        : `${collectionLabel(item)} request sent to verified pharmacies`,
+        : item.isDelivery
+          ? `${collectionLabel(item)} request sent to delivery-capable pharmacies`
+          : `${collectionLabel(item)} request sent to verified pharmacies`,
       badge: statusLabel(item.status),
       createdAt: item.createdAt,
     })),

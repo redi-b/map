@@ -55,7 +55,9 @@ export async function createAvailabilityRequest(
     ? selectedPharmacy.branchName
       ? `${selectedPharmacy.name} - ${selectedPharmacy.branchName}`
       : selectedPharmacy.name
-    : "verified pharmacies"
+    : input.isDelivery
+      ? "delivery-capable pharmacies"
+      : "verified pharmacies"
 
   await createNotification(
     patientProfileId,
@@ -122,7 +124,9 @@ export async function listPatientRequests(patientProfileId: string) {
     deliveryAddress: r.deliveryAddress,
     proxyName: r.proxyName,
     proxyPhone: r.proxyPhone,
-    pharmacy: r.pharmacyName ? (r.pharmacyBranchName ? `${r.pharmacyName} - ${r.pharmacyBranchName}` : r.pharmacyName) : "All pharmacies",
+    pharmacy: r.pharmacyName
+      ? (r.pharmacyBranchName ? `${r.pharmacyName} - ${r.pharmacyBranchName}` : r.pharmacyName)
+      : r.isDelivery ? "Delivery-capable pharmacies" : "All verified pharmacies",
     latestResponse: latestResponseByRequestId.has(r.id)
       ? {
         response: latestResponseByRequestId.get(r.id)!.response,

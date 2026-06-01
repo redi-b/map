@@ -26,6 +26,7 @@ const pharmacyRows = [
     email: "bole@lion.example",
     latitude: "8.9965000",
     longitude: "38.7898000",
+    supportsDelivery: true,
     isVerified: true,
   },
   {
@@ -39,6 +40,7 @@ const pharmacyRows = [
     email: "kazanchis@wudassie.example",
     latitude: "9.0183000",
     longitude: "38.7636000",
+    supportsDelivery: false,
     isVerified: true,
   },
   {
@@ -52,6 +54,7 @@ const pharmacyRows = [
     email: "piazza@healthplus.example",
     latitude: "9.0357000",
     longitude: "38.7513000",
+    supportsDelivery: true,
     isVerified: true,
   },
   {
@@ -65,6 +68,7 @@ const pharmacyRows = [
     email: "megenagna@redcross.example",
     latitude: "9.0121000",
     longitude: "38.8012000",
+    supportsDelivery: false,
     isVerified: true,
   },
 ]
@@ -418,6 +422,7 @@ async function seed() {
           email: pharmacy.email,
           latitude: pharmacy.latitude,
           longitude: pharmacy.longitude,
+          supportsDelivery: pharmacy.supportsDelivery,
           isVerified: pharmacy.isVerified,
         },
       })
