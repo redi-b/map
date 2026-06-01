@@ -195,6 +195,7 @@ export async function respondToRequest(
       .where(
         and(
           eq(availabilityRequests.id, requestId),
+          inArray(availabilityRequests.status, ["submitted", "under_review"]),
           or(eq(availabilityRequests.pharmacyId, pharmacyId), isNull(availabilityRequests.pharmacyId)),
         ),
       )

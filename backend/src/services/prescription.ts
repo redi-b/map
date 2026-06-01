@@ -181,26 +181,36 @@ export async function reviewPrescription(
   reviewerProfileId: string,
   input: ReviewPrescriptionInput,
 ) {
-  // Update prescription status
   const newStatus = input.action === "approve" ? "verified" : input.action === "reject" ? "rejected" : "under_review"
+  const review = await db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(prescriptions)
+      .set({ status: newStatus, updatedAt: new Date() })
+      .where(and(eq(prescriptions.id, prescriptionId), inArray(prescriptions.status, ["uploaded", "under_review"])))
+      .returning({ id: prescriptions.id })
 
-  await db
-    .update(prescriptions)
-    .set({ status: newStatus, updatedAt: new Date() })
-    .where(eq(prescriptions.id, prescriptionId))
+    if (!updated) {
+      return null
+    }
 
-  // Create review record
-  const [review] = await db
-    .insert(prescriptionReviews)
-    .values({
-      prescriptionId,
-      reviewerProfileId,
-      action: input.action,
-      instructions: input.instructions ?? null,
-      estimatedCostEtb: input.estimatedCostEtb ? String(input.estimatedCostEtb) : null,
-      alternativeMedicineId: input.alternativeMedicineId ?? null,
-    })
-    .returning()
+    const [createdReview] = await tx
+      .insert(prescriptionReviews)
+      .values({
+        prescriptionId,
+        reviewerProfileId,
+        action: input.action,
+        instructions: input.instructions ?? null,
+        estimatedCostEtb: input.estimatedCostEtb ? String(input.estimatedCostEtb) : null,
+        alternativeMedicineId: input.alternativeMedicineId ?? null,
+      })
+      .returning()
+
+    return createdReview
+  })
+
+  if (!review) {
+    return null
+  }
 
   // Notify patient
   const [rx] = await db

@@ -162,6 +162,10 @@ export const prescriptionRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const review = await reviewPrescription(id, context.profile.id, parsed.data)
+    if (!review) {
+      return reply.status(409).send({ error: "Prescription has already been reviewed" })
+    }
+
     await writeAuditLog({
       actorProfileId: context.profile.id,
       action: "prescription.review",
