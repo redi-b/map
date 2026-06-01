@@ -95,6 +95,14 @@ function getLatestUpdate(item: PatientRequestItem) {
   }
 }
 
+function getPendingMessage(item: PatientRequestItem) {
+  if (item.type === "prescription") {
+    return "Submitted for pharmacy review. The selected pharmacy will respond with approval, rejection, or next steps."
+  }
+
+  return "Waiting for a pharmacy response. You can send another search request if the medicine is urgent."
+}
+
 export default function PrescriptionsPage() {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([])
   const [availabilityRequests, setAvailabilityRequests] = useState<PatientAvailabilityRequest[]>([])
@@ -253,6 +261,7 @@ export default function PrescriptionsPage() {
           }
           const StatusIcon = config.icon
           const latestUpdate = getLatestUpdate(item)
+          const requestNote = item.notes || (!latestUpdate ? getPendingMessage(item) : "")
 
           return (
             <Card key={`${item.type}-${item.id}`} className="overflow-hidden border border-muted bg-card shadow-sm transition-all duration-200 hover:border-primary/45 hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
@@ -309,9 +318,11 @@ export default function PrescriptionsPage() {
                     </div>
                   </div>
 
-                  <div className="rounded-lg border border-muted bg-muted/25 px-3 py-2.5 text-xs text-muted-foreground/90 leading-relaxed font-medium">
-                    {item.notes || (item.type === "prescription" ? "Submitted for pharmacy review. The selected pharmacy will respond with approval, rejection, or next steps." : "Waiting for a pharmacy response. You can send another search request if the medicine is urgent.")}
-                  </div>
+                  {requestNote ? (
+                    <div className="rounded-lg border border-muted bg-muted/25 px-3 py-2.5 text-xs text-muted-foreground/90 leading-relaxed font-medium">
+                      {requestNote}
+                    </div>
+                  ) : null}
                   {item.isDelivery && item.deliveryAddress ? (
                     <div className="rounded-lg border border-muted bg-muted/20 px-3 py-2 text-xs">
                       <span className="text-muted-foreground">Delivery address: </span>
@@ -327,9 +338,9 @@ export default function PrescriptionsPage() {
                   ) : null}
                   {latestUpdate ? (
                     <div className="grid gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="grid gap-0.5">
                         <span className="font-semibold text-foreground">{latestUpdate.title}</span>
-                        <span className="text-muted-foreground">{formatDate(latestUpdate.date)}</span>
+                        <span className="text-muted-foreground">Updated {formatDate(latestUpdate.date)}</span>
                       </div>
                       {latestUpdate.detail ? (
                         <p className="leading-relaxed text-muted-foreground">{latestUpdate.detail}</p>
