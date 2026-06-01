@@ -229,7 +229,7 @@ async function getPatientDashboard(profile: CurrentProfile): Promise<DashboardSu
     role: "patient",
     hero: {
       badge: "Patient dashboard",
-      title: `Good morning, ${profile.fullName}`,
+      title: `Welcome back, ${profile.fullName}`,
       description: "Search nearby medicine stock, keep prescriptions moving, and track the care tasks that need attention today.",
       primaryHref: "/dashboard/find",
       primaryLabel: "Find medicine",

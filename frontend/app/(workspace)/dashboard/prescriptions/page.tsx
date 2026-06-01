@@ -287,7 +287,7 @@ export default function PrescriptionsPage() {
                           {config.label}
                         </Badge>
                         <Badge variant="outline" className="px-2 py-0.5 text-[10px] font-medium border-muted-foreground/20 text-muted-foreground">
-                          {item.type === "prescription" ? "Prescription" : "AvailabilitySearch"}
+                          {item.type === "prescription" ? "Prescription" : "Availability request"}
                         </Badge>
                         <Badge variant="outline" className="px-2 py-0.5 text-[10px] font-medium border-muted-foreground/20 text-muted-foreground">
                           {getCollectionLabel(item)}

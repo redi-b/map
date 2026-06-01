@@ -496,7 +496,7 @@ export function MedicineSearch() {
       <div className="flex flex-col gap-4">
         <Card className="h-fit">
           <CardHeader>
-            <CardTitle>Broadcast request</CardTitle>
+            <CardTitle>Stock request</CardTitle>
             <CardDescription>
               Ask verified pharmacies to confirm stock for hard-to-find medicines.
             </CardDescription>
@@ -656,8 +656,8 @@ export function MedicineSearch() {
                   <div className="flex items-start gap-3 rounded-xl border p-3">
                     <TruckIcon className="mt-0.5 size-4 text-muted-foreground" />
                     <div>
-                      <p className="font-medium">{selectedResult.deliveryAvailable ? "Delivery may be available" : "Pickup recommended"}</p>
-                      <p className="text-muted-foreground">Delivery availability is estimated from current stock. Confirm directly for urgent orders.</p>
+                      <p className="font-medium">{selectedResult.deliveryAvailable ? "Delivery supported" : "Pickup recommended"}</p>
+                      <p className="text-muted-foreground">Delivery support comes from the verified pharmacy profile. Confirm timing directly for urgent orders.</p>
                     </div>
                   </div>
                   <div className="rounded-xl border bg-primary/5 p-3 text-muted-foreground">
