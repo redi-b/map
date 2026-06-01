@@ -1,6 +1,6 @@
 "use client"
 
-import { CheckIcon, FileImageIcon, Loader2Icon, MessageSquareTextIcon, PackageCheckIcon, XIcon } from "lucide-react"
+import { CheckIcon, FileImageIcon, Loader2Icon, MessageSquareTextIcon, PackageCheckIcon, RefreshCwIcon, XIcon } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -75,6 +75,7 @@ export default function PharmacyRequestsPage() {
   const [selectedKey, setSelectedKey] = useState("")
   const [instructions, setInstructions] = useState("")
   const [estimatedCost, setEstimatedCost] = useState("")
+  const [alternativeMedicineName, setAlternativeMedicineName] = useState("")
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
@@ -117,6 +118,14 @@ export default function PharmacyRequestsPage() {
     return () => window.clearTimeout(timeout)
   }, [])
 
+  function selectRequest(key: string) {
+    setSelectedKey(key)
+    setInstructions("")
+    setEstimatedCost("")
+    setAlternativeMedicineName("")
+    setError("")
+  }
+
   async function handlePrescriptionReview(action: "approve" | "reject") {
     if (!selected || selected.type !== "prescription") return
 
@@ -142,8 +151,12 @@ export default function PharmacyRequestsPage() {
     }
   }
 
-  async function handleAvailabilityResponse(response: "available" | "not_available") {
+  async function handleAvailabilityResponse(response: "available" | "not_available" | "alternate") {
     if (!selected || selected.type !== "availability") return
+    if (response === "alternate" && !alternativeMedicineName.trim()) {
+      setError("Enter the alternative medicine name before offering an alternative.")
+      return
+    }
 
     setSaving(true)
     setError("")
@@ -153,12 +166,20 @@ export default function PharmacyRequestsPage() {
         requestId: selected.id,
         response,
         notes: instructions.trim() || undefined,
+        alternativeMedicineName: response === "alternate" ? alternativeMedicineName.trim() : undefined,
         estimatedPriceEtb: estimatedCost ? Number(estimatedCost) : undefined,
       })
       setInstructions("")
       setEstimatedCost("")
+      setAlternativeMedicineName("")
       await loadRequests()
-      toast.success(response === "available" ? "Availability confirmed" : "Availability declined")
+      toast.success(
+        response === "available"
+          ? "Availability confirmed"
+          : response === "alternate"
+            ? "Alternative sent"
+            : "Availability declined",
+      )
     } catch {
       setError("Unable to update this availability request.")
       toast.error("Request not updated", "Try again in a moment.")
@@ -195,7 +216,7 @@ export default function PharmacyRequestsPage() {
           const active = selected ? key === `${selected.type}:${selected.id}` : false
 
           return (
-            <button key={key} className="cursor-pointer text-left" onClick={() => setSelectedKey(key)}>
+            <button key={key} className="cursor-pointer text-left" onClick={() => selectRequest(key)}>
               <Card className={active ? "bg-primary/5 ring-2 ring-primary/70" : "transition hover:bg-muted/30"}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -305,6 +326,20 @@ export default function PharmacyRequestsPage() {
                 Estimated price ETB
                 <Input disabled={!selectedActionable} type="number" min="0" step="0.01" value={estimatedCost} onChange={(event) => setEstimatedCost(event.target.value)} placeholder="Optional" />
               </label>
+              {selected?.type === "availability" ? (
+                <label className="flex flex-col gap-1 text-sm font-medium">
+                  Alternative medicine
+                  <Input
+                    disabled={!selectedActionable}
+                    value={alternativeMedicineName}
+                    onChange={(event) => {
+                      setAlternativeMedicineName(event.target.value)
+                      setError("")
+                    }}
+                    placeholder="Required only when offering an alternative"
+                  />
+                </label>
+              ) : null}
 
               {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
@@ -325,6 +360,10 @@ export default function PharmacyRequestsPage() {
                     <Button variant="outline" disabled={!selected || !selectedActionable || saving} onClick={() => void handleAvailabilityResponse("not_available")}>
                       {saving ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <XIcon data-icon="inline-start" />}
                       Not available
+                    </Button>
+                    <Button variant="outline" disabled={!selected || !selectedActionable || saving} onClick={() => void handleAvailabilityResponse("alternate")}>
+                      {saving ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <RefreshCwIcon data-icon="inline-start" />}
+                      Offer alternative
                     </Button>
                     <Button disabled={!selected || !selectedActionable || saving} onClick={() => void handleAvailabilityResponse("available")}>
                       {saving ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <CheckIcon data-icon="inline-start" />}

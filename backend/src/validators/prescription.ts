@@ -53,6 +53,14 @@ export const respondToRequestSchema = z.object({
   alternativeMedicineName: cleanString(z.string().max(200)).optional(),
   estimatedPriceEtb: z.number().positive().optional(),
   notes: cleanString(z.string().max(500)).optional(),
+}).superRefine((input, ctx) => {
+  if (input.response === "alternate" && !input.alternativeMedicineName) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["alternativeMedicineName"],
+      message: "Alternative medicine name is required when offering an alternative",
+    })
+  }
 })
 
 export type CreatePrescriptionInput = z.infer<typeof createPrescriptionSchema>
