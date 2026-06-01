@@ -169,6 +169,9 @@ export function MedicineSearch() {
       const filters: SearchFilters = {
         q: trimmedQuery,
         neighborhood: selectedNeighborhood || undefined,
+        inStock: inStockOnly || undefined,
+        delivery: deliveryOnly || undefined,
+        maxPrice: underFiveHundred ? 500 : undefined,
         latitude: userLocation?.latitude,
         longitude: userLocation?.longitude,
       }

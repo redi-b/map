@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ilike, lte, ne, or } from "drizzle-orm"
+import { and, asc, eq, ilike, lte, ne, or } from "drizzle-orm"
 import { db } from "../db/client.js"
 import { inventoryItems, medicines, pharmacies } from "../db/schema.js"
 import type { MedicineSearchQuery, MedicineSuggestionQuery } from "../validators/search.js"
@@ -163,8 +163,6 @@ export async function searchMedicines(query: MedicineSearchQuery) {
     .from(inventoryItems)
     .innerJoin(medicines, eq(inventoryItems.medicineId, medicines.id))
     .innerJoin(pharmacies, eq(inventoryItems.pharmacyId, pharmacies.id))
-    .orderBy(desc(inventoryItems.updatedAt))
-    .limit(query.limit)
 
   const rows = where ? await selectQuery.where(where) : await selectQuery
 
@@ -201,9 +199,11 @@ export async function searchMedicines(query: MedicineSearchQuery) {
       neighborhood: query.neighborhood,
       inStock: query.inStock,
       latitude: query.latitude,
-      longitude: query.longitude,
+    longitude: query.longitude,
+    delivery: query.delivery,
+    maxPrice: query.maxPrice,
     },
-    results,
+    results: results.slice(0, query.limit),
   }
 }
 

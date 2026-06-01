@@ -324,7 +324,15 @@ export async function searchMedicines(filters: SearchFilters | string) {
   }
 
   return response.json() as Promise<{
-    query: { q: string; neighborhood?: string; inStock?: boolean }
+    query: {
+      q: string
+      neighborhood?: string
+      inStock?: boolean
+      delivery?: boolean
+      maxPrice?: number
+      latitude?: number
+      longitude?: number
+    }
     results: MedicineSearchResult[]
   }>
 }
