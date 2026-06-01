@@ -7,6 +7,7 @@ import {
   isValidElement,
   type ReactNode,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -157,13 +158,12 @@ function RingChartInner({
     [baseInnerRadius, strokeWidth, ringGap]
   );
 
-  // Mark as loaded after initial render
-  useState(() => {
+  useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoaded(true);
     }, 100);
     return () => clearTimeout(timer);
-  });
+  }, []);
 
   // Separate SVG children (rings) from HTML children (RingCenter)
   // This avoids Safari's foreignObject positioning bugs (WebKit #23113)
