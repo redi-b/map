@@ -1,4 +1,4 @@
-import { desc, eq, isNull, or } from "drizzle-orm"
+import { and, desc, eq, isNull, or } from "drizzle-orm"
 import { db } from "../db/client.js"
 import {
   availabilityRequests,
@@ -90,6 +90,17 @@ function statusLabel(status: string) {
     .join(" ")
 }
 
+function branchLabel(row: { name: string | null; branchName?: string | null }) {
+  if (!row.name) return null
+  return row.branchName ? `${row.name} - ${row.branchName}` : row.name
+}
+
+function collectionLabel(row: { isDelivery?: boolean | null; proxyName?: string | null }) {
+  if (row.isDelivery) return "Delivery"
+  if (row.proxyName) return "Proxy pickup"
+  return "Self pickup"
+}
+
 function todayStart() {
   const start = new Date()
   start.setHours(0, 0, 0, 0)
@@ -160,8 +171,11 @@ async function getPatientDashboard(profile: CurrentProfile): Promise<DashboardSu
         id: prescriptions.id,
         status: prescriptions.status,
         notes: prescriptions.notes,
+        isDelivery: prescriptions.isDelivery,
+        proxyName: prescriptions.proxyName,
         createdAt: prescriptions.createdAt,
         pharmacyName: pharmacies.name,
+        pharmacyBranchName: pharmacies.branchName,
       })
       .from(prescriptions)
       .innerJoin(pharmacies, eq(prescriptions.pharmacyId, pharmacies.id))
@@ -173,8 +187,11 @@ async function getPatientDashboard(profile: CurrentProfile): Promise<DashboardSu
         medicineName: availabilityRequests.medicineName,
         status: availabilityRequests.status,
         notes: availabilityRequests.notes,
+        isDelivery: availabilityRequests.isDelivery,
+        proxyName: availabilityRequests.proxyName,
         createdAt: availabilityRequests.createdAt,
         pharmacyName: pharmacies.name,
+        pharmacyBranchName: pharmacies.branchName,
       })
       .from(availabilityRequests)
       .leftJoin(pharmacies, eq(availabilityRequests.pharmacyId, pharmacies.id))
@@ -193,14 +210,16 @@ async function getPatientDashboard(profile: CurrentProfile): Promise<DashboardSu
 
   const requestRows = latestRows([
     ...patientPrescriptions.map((item) => ({
-      label: item.pharmacyName,
-      detail: item.notes || "Prescription request",
+      label: branchLabel({ name: item.pharmacyName, branchName: item.pharmacyBranchName }) ?? "Selected pharmacy",
+      detail: item.notes || `${collectionLabel(item)} prescription request`,
       badge: statusLabel(item.status),
       createdAt: item.createdAt,
     })),
     ...patientAvailabilityRequests.map((item) => ({
       label: item.medicineName,
-      detail: item.pharmacyName ? `Availability request at ${item.pharmacyName}` : "Availability request sent to pharmacies",
+      detail: branchLabel({ name: item.pharmacyName, branchName: item.pharmacyBranchName })
+        ? `${collectionLabel(item)} request at ${branchLabel({ name: item.pharmacyName, branchName: item.pharmacyBranchName })}`
+        : `${collectionLabel(item)} request sent to verified pharmacies`,
       badge: statusLabel(item.status),
       createdAt: item.createdAt,
     })),
@@ -338,13 +357,21 @@ async function getPharmacistDashboard(profile: CurrentProfile): Promise<Dashboar
         medicineName: availabilityRequests.medicineName,
         status: availabilityRequests.status,
         notes: availabilityRequests.notes,
+        isDelivery: availabilityRequests.isDelivery,
+        proxyName: availabilityRequests.proxyName,
         createdAt: availabilityRequests.createdAt,
         updatedAt: availabilityRequests.updatedAt,
         patientName: profiles.fullName,
       })
       .from(availabilityRequests)
+      .innerJoin(pharmacies, eq(pharmacies.id, pharmacyId))
       .innerJoin(profiles, eq(availabilityRequests.patientProfileId, profiles.id))
-      .where(or(eq(availabilityRequests.pharmacyId, pharmacyId), isNull(availabilityRequests.pharmacyId)))
+      .where(
+        and(
+          or(eq(availabilityRequests.pharmacyId, pharmacyId), isNull(availabilityRequests.pharmacyId)),
+          or(eq(availabilityRequests.isDelivery, false), eq(pharmacies.supportsDelivery, true)),
+        ),
+      )
       .orderBy(desc(availabilityRequests.createdAt)),
   ])
 
@@ -374,7 +401,7 @@ async function getPharmacistDashboard(profile: CurrentProfile): Promise<Dashboar
     })),
     ...openAvailability.map((item) => ({
       label: item.patientName,
-      detail: item.medicineName,
+      detail: `${item.medicineName} - ${collectionLabel(item)}`,
       badge: statusLabel(item.status),
       createdAt: item.createdAt,
     })),
