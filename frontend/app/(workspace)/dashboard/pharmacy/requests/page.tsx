@@ -34,6 +34,8 @@ const statusLabels: Record<string, string> = {
   completed: "Completed",
 }
 
+const actionableStatuses = new Set(["uploaded", "submitted", "under_review"])
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en", {
     month: "short",
@@ -63,6 +65,10 @@ function getCollectionLabel(item: InboxItem) {
   return "Self pickup"
 }
 
+function isActionable(item: InboxItem) {
+  return actionableStatuses.has(item.status)
+}
+
 export default function PharmacyRequestsPage() {
   const [prescriptions, setPrescriptions] = useState<PharmacyPrescription[]>([])
   const [availabilityRequests, setAvailabilityRequests] = useState<AvailabilityRequest[]>([])
@@ -81,6 +87,8 @@ export default function PharmacyRequestsPage() {
   }, [availabilityRequests, prescriptions])
 
   const selected = inbox.find((item) => `${item.type}:${item.id}` === selectedKey) ?? inbox[0]
+  const actionableCount = inbox.filter(isActionable).length
+  const selectedActionable = selected ? isActionable(selected) : false
 
   async function loadRequests() {
     setLoading(true)
@@ -164,7 +172,7 @@ export default function PharmacyRequestsPage() {
       <aside className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-[var(--font-display)] text-xl font-semibold">Request queue</h2>
-          <Badge variant="secondary">{inbox.length} open</Badge>
+          <Badge variant="secondary">{actionableCount} open</Badge>
         </div>
 
         {loading ? (
@@ -201,6 +209,11 @@ export default function PharmacyRequestsPage() {
                       <Badge className="ml-2 mt-2" variant="outline">
                         {getCollectionLabel(item)}
                       </Badge>
+                      {!isActionable(item) ? (
+                        <Badge className="ml-2 mt-2" variant="secondary">
+                          Handled
+                        </Badge>
+                      ) : null}
                     </div>
                     <span className="text-xs text-muted-foreground">{formatDate(item.createdAt)}</span>
                   </div>
@@ -279,13 +292,18 @@ export default function PharmacyRequestsPage() {
               <CardDescription>Send a clear status update to the patient.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
+              {!selectedActionable ? (
+                <div className="rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
+                  This request has already been handled. The patient can see the latest update in their request history.
+                </div>
+              ) : null}
               <label className="flex flex-col gap-1 text-sm font-medium">
                 Notes
-                <Input value={instructions} onChange={(event) => setInstructions(event.target.value)} placeholder="Ready for pickup, stock unavailable, or next steps" />
+                <Input disabled={!selectedActionable} value={instructions} onChange={(event) => setInstructions(event.target.value)} placeholder="Ready for pickup, stock unavailable, or next steps" />
               </label>
               <label className="flex flex-col gap-1 text-sm font-medium">
                 Estimated price ETB
-                <Input type="number" min="0" step="0.01" value={estimatedCost} onChange={(event) => setEstimatedCost(event.target.value)} placeholder="Optional" />
+                <Input disabled={!selectedActionable} type="number" min="0" step="0.01" value={estimatedCost} onChange={(event) => setEstimatedCost(event.target.value)} placeholder="Optional" />
               </label>
 
               {error ? <p className="text-sm text-destructive">{error}</p> : null}
@@ -293,22 +311,22 @@ export default function PharmacyRequestsPage() {
               <div className="flex flex-wrap gap-2">
                 {selected?.type === "prescription" ? (
                   <>
-                    <Button variant="outline" disabled={!selected || saving} onClick={() => void handlePrescriptionReview("reject")}>
+                    <Button variant="outline" disabled={!selected || !selectedActionable || saving} onClick={() => void handlePrescriptionReview("reject")}>
                       {saving ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <XIcon data-icon="inline-start" />}
                       Reject
                     </Button>
-                    <Button disabled={!selected || saving} onClick={() => void handlePrescriptionReview("approve")}>
+                    <Button disabled={!selected || !selectedActionable || saving} onClick={() => void handlePrescriptionReview("approve")}>
                       {saving ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <CheckIcon data-icon="inline-start" />}
                       Approve
                     </Button>
                   </>
                 ) : (
                   <>
-                    <Button variant="outline" disabled={!selected || saving} onClick={() => void handleAvailabilityResponse("not_available")}>
+                    <Button variant="outline" disabled={!selected || !selectedActionable || saving} onClick={() => void handleAvailabilityResponse("not_available")}>
                       {saving ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <XIcon data-icon="inline-start" />}
                       Not available
                     </Button>
-                    <Button disabled={!selected || saving} onClick={() => void handleAvailabilityResponse("available")}>
+                    <Button disabled={!selected || !selectedActionable || saving} onClick={() => void handleAvailabilityResponse("available")}>
                       {saving ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <CheckIcon data-icon="inline-start" />}
                       Available
                     </Button>
