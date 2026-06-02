@@ -79,6 +79,7 @@ export function AdherenceTracker() {
   const [medicineName, setMedicineName] = useState("")
   const [dosage, setDosage] = useState("")
   const [frequency, setFrequency] = useState("Once daily")
+  const [scheduleNote, setScheduleNote] = useState("")
   const [nextDoseAt, setNextDoseAt] = useState(defaultNextDoseValue)
   const [supplyRemainingDays, setSupplyRemainingDays] = useState("")
   const [loading, setLoading] = useState(true)
@@ -174,13 +175,14 @@ export function AdherenceTracker() {
       await createReminder({
         medicineName,
         dosage,
-        frequency,
+        frequency: scheduleNote.trim() ? `${frequency} (${scheduleNote.trim()})` : frequency,
         nextDoseAt: new Date(nextDoseAt).toISOString(),
         supplyRemainingDays: supplyRemainingDays ? Number(supplyRemainingDays) : undefined,
       })
       setMedicineName("")
       setDosage("")
       setFrequency("Once daily")
+      setScheduleNote("")
       setNextDoseAt(defaultNextDoseValue())
       setSupplyRemainingDays("")
       await loadAdherence()
@@ -245,41 +247,54 @@ export function AdherenceTracker() {
         <Card>
           <CardHeader>
             <CardTitle>Add adherence entry</CardTitle>
-            <CardDescription>Set the first dose time. Clear repeat patterns add same-day dose entries; supply days power refill notifications.</CardDescription>
+            <CardDescription>Set the next exact dose time. Supported repeat patterns create same-day dose entries; notes are saved as context only.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form className="grid gap-3 lg:grid-cols-[1fr_8rem_12rem_12rem_8rem_auto]" onSubmit={handleCreateReminder}>
-              <label className="grid gap-1 text-sm font-medium">
-                Medicine
-                <Input value={medicineName} onChange={(event) => setMedicineName(event.target.value)} placeholder="e.g. Amoxicillin" autoComplete="off" required />
-              </label>
-              <label className="grid gap-1 text-sm font-medium">
-                Dose
-                <Input value={dosage} onChange={(event) => setDosage(event.target.value)} placeholder="500mg" required />
-              </label>
-              <label className="grid gap-1 text-sm font-medium">
-                Repeat pattern
-                <Select value={frequency} onValueChange={(value) => setFrequency(value ?? "Once daily")}>
-                  <SelectTrigger className="w-full" aria-label="Frequency"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {frequencyOptions.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </label>
-              <label className="grid gap-1 text-sm font-medium">
-                First/next dose
-                <Input type="datetime-local" value={nextDoseAt} onChange={(event) => setNextDoseAt(event.target.value)} required />
-              </label>
-              <label className="grid gap-1 text-sm font-medium">
-                Supply days
-                <Input type="number" min="0" value={supplyRemainingDays} onChange={(event) => setSupplyRemainingDays(event.target.value)} placeholder="Optional" />
-              </label>
-              <Button className="lg:mt-6" type="submit" disabled={saving}>
-                {saving ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <PillIcon data-icon="inline-start" />}
-                Add
-              </Button>
+            <form className="grid gap-4" onSubmit={handleCreateReminder}>
+              <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_10rem]">
+                <label className="grid gap-1 text-sm font-medium">
+                  Medicine
+                  <Input value={medicineName} onChange={(event) => setMedicineName(event.target.value)} placeholder="e.g. Amoxicillin" autoComplete="off" required />
+                </label>
+                <label className="grid gap-1 text-sm font-medium">
+                  Dose
+                  <Input value={dosage} onChange={(event) => setDosage(event.target.value)} placeholder="500mg" required />
+                </label>
+              </div>
+              <div className="grid gap-3 lg:grid-cols-[minmax(12rem,0.9fr)_minmax(12rem,1fr)]">
+                <label className="grid gap-1 text-sm font-medium">
+                  Repeat pattern
+                  <Select value={frequency} onValueChange={(value) => setFrequency(value ?? "Once daily")}>
+                    <SelectTrigger className="w-full" aria-label="Frequency"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {frequencyOptions.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-xs text-muted-foreground">Automated same-day entries are created only for supported repeat patterns.</span>
+                </label>
+                <label className="grid gap-1 text-sm font-medium">
+                  Schedule note
+                  <Input value={scheduleNote} onChange={(event) => setScheduleNote(event.target.value)} placeholder="Optional, e.g. after breakfast" />
+                  <span className="text-xs text-muted-foreground">Notes help you remember instructions; they do not create extra notification times.</span>
+                </label>
+              </div>
+              <div className="grid gap-3 md:grid-cols-[minmax(13rem,1fr)_12rem_auto] md:items-start">
+                <label className="grid gap-1 text-sm font-medium">
+                  Next dose time
+                  <Input type="datetime-local" value={nextDoseAt} onChange={(event) => setNextDoseAt(event.target.value)} required />
+                </label>
+                <label className="grid gap-1 text-sm font-medium">
+                  Days of supply left
+                  <Input type="number" min="0" value={supplyRemainingDays} onChange={(event) => setSupplyRemainingDays(event.target.value)} placeholder="Optional" />
+                  <span className="text-xs text-muted-foreground">Used for refill reminders when 5 days or less remain.</span>
+                </label>
+                <Button className="md:mt-6" type="submit" disabled={saving}>
+                  {saving ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <PillIcon data-icon="inline-start" />}
+                  Add
+                </Button>
+              </div>
             </form>
           </CardContent>
         </Card>

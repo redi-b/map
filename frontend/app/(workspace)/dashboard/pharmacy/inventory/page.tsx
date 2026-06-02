@@ -68,7 +68,7 @@ type BatchImportResult = {
   errors: Array<{ row: number; message: string }>
 }
 
-type AddInventoryErrors = Partial<Record<"medicineId" | "quantity" | "price" | "newMedicineName" | "newMedicineForm" | "newMedicineCategory", string>>
+type AddInventoryErrors = Partial<Record<"medicineId" | "quantity" | "price" | "expiresAt" | "newMedicineName" | "newMedicineForm" | "newMedicineCategory", string>>
 
 type EditableStockStatus = InventoryItem["stockStatus"] | "auto"
 
@@ -209,6 +209,16 @@ function toDateInput(value: string | null) {
 
 function dateInputToIso(value: string) {
   return new Date(`${value}T00:00:00`).toISOString()
+}
+
+function todayInputValue() {
+  const date = new Date()
+  date.setMinutes(date.getMinutes() - date.getTimezoneOffset())
+  return date.toISOString().slice(0, 10)
+}
+
+function isPastDateInput(value: string) {
+  return Boolean(value) && value < todayInputValue()
 }
 
 function formatDate(value: string | null) {
@@ -369,6 +379,7 @@ export default function PharmacyInventoryPage() {
     else if (!Number.isInteger(quantity) || quantity < 0) nextErrors.quantity = "Quantity must be a whole number, 0 or higher."
     if (!addPrice.trim()) nextErrors.price = "Enter the unit price."
     else if (!Number.isFinite(price) || price <= 0) nextErrors.price = "Price must be greater than 0."
+    if (isPastDateInput(addExpiresAt)) nextErrors.expiresAt = "Expiry date cannot be in the past."
 
     setAddErrors(nextErrors)
     return { isValid: Object.keys(nextErrors).length === 0, quantity, price }
@@ -388,6 +399,12 @@ export default function PharmacyInventoryPage() {
   }
 
   async function handleUpdate(itemId: string) {
+    if (isPastDateInput(editExpiresAt)) {
+      setError("Expiry date cannot be in the past.")
+      toast.error("Update failed", "Expiry date cannot be in the past.")
+      return
+    }
+
     setSaving(true)
     setError("")
     const item = items.find((i) => i.id === itemId)
@@ -845,17 +862,19 @@ export default function PharmacyInventoryPage() {
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      <SelectItem value="auto">Auto by quantity</SelectItem>
+                      <SelectItem value="auto">Auto: 0 out, 1-9 low, 10+ in stock</SelectItem>
                       <SelectItem value="in_stock">In stock</SelectItem>
                       <SelectItem value="low_stock">Low stock</SelectItem>
                       <SelectItem value="out_of_stock">Out of stock</SelectItem>
                     </SelectGroup>
                   </SelectContent>
                 </Select>
+                <span className="text-xs text-muted-foreground">Auto status uses quantity: 0 out, 1-9 low, 10+ in stock.</span>
               </label>
               <label className="grid gap-1 text-sm font-medium">
                 Expiry date
-                <Input type="date" value={addExpiresAt} onChange={(event) => setAddExpiresAt(event.target.value)} />
+                <Input type="date" min={todayInputValue()} value={addExpiresAt} aria-invalid={Boolean(addErrors.expiresAt)} onChange={(event) => { setAddExpiresAt(event.target.value); setAddErrors((current) => ({ ...current, expiresAt: undefined })) }} />
+                {addErrors.expiresAt ? <span className="text-xs text-destructive">{addErrors.expiresAt}</span> : null}
               </label>
               <Button className="xl:mt-6" onClick={handleAdd} disabled={saving}>
                 {saving ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <SaveIcon data-icon="inline-start" />}
@@ -932,7 +951,7 @@ export default function PharmacyInventoryPage() {
                             <SelectTrigger size="sm" className="w-36"><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectGroup>
-                                <SelectItem value="auto">Auto by quantity</SelectItem>
+                                <SelectItem value="auto">Auto: 0 out, 1-9 low, 10+ in stock</SelectItem>
                                 <SelectItem value="in_stock">In stock</SelectItem>
                                 <SelectItem value="low_stock">Low stock</SelectItem>
                                 <SelectItem value="out_of_stock">Out of stock</SelectItem>
@@ -945,7 +964,7 @@ export default function PharmacyInventoryPage() {
                       </TableCell>
                       <TableCell>
                         {editingId === item.id ? (
-                          <Input className="h-8 w-36" type="date" value={editExpiresAt} onChange={(event) => setEditExpiresAt(event.target.value)} />
+                          <Input className="h-8 w-36" type="date" min={todayInputValue()} value={editExpiresAt} onChange={(event) => setEditExpiresAt(event.target.value)} />
                         ) : (
                           <div className="flex flex-col gap-1">
                             <span>{formatDate(item.expiresAt)}</span>

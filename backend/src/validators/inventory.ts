@@ -1,19 +1,32 @@
 import { z } from "zod"
 import { cleanString } from "../lib/sanitize.js"
 
+function expiryIsTodayOrFuture(value?: string | null) {
+  if (!value) return true
+  const expiry = new Date(value)
+  const today = new Date()
+  expiry.setHours(0, 0, 0, 0)
+  today.setHours(0, 0, 0, 0)
+  return expiry >= today
+}
+
+const expirySchema = z.string().datetime().optional().nullable().refine(expiryIsTodayOrFuture, {
+  message: "Expiry date cannot be in the past",
+})
+
 export const addInventoryItemSchema = z.object({
   medicineId: z.string().uuid(),
   quantity: z.number().int().min(0),
   unitPriceEtb: z.number().positive(),
   stockStatus: z.enum(["in_stock", "low_stock", "out_of_stock"]).optional(),
-  expiresAt: z.string().datetime().optional().nullable(),
+  expiresAt: expirySchema,
 })
 
 export const updateInventoryItemSchema = z.object({
   quantity: z.number().int().min(0).optional(),
   unitPriceEtb: z.number().positive().optional(),
   stockStatus: z.enum(["in_stock", "low_stock", "out_of_stock"]).optional(),
-  expiresAt: z.string().datetime().optional().nullable(),
+  expiresAt: expirySchema,
 })
 
 export const batchInventoryItemSchema = z.object({
@@ -24,7 +37,7 @@ export const batchInventoryItemSchema = z.object({
   quantity: z.number().int().min(0),
   unitPriceEtb: z.number().positive(),
   stockStatus: z.enum(["in_stock", "low_stock", "out_of_stock"]).optional(),
-  expiresAt: z.string().datetime().optional().nullable(),
+  expiresAt: expirySchema,
 }).refine((value) => value.medicineId || value.medicineName, {
   message: "Provide a medicine id or medicine name",
   path: ["medicineName"],
