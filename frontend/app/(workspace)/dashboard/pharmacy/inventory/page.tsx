@@ -334,13 +334,14 @@ export default function PharmacyInventoryPage() {
     return items
   }, [items, stockFilter])
 
+  const selectedMedicine = useMemo(() => medicines.find((medicine) => medicine.id === addMedicineId), [addMedicineId, medicines])
+
   const filteredMedicines = useMemo(() => {
     const query = medicineSearch.trim().toLowerCase()
-    const source = query ? medicines.filter((medicine) => medicineSearchText(medicine).includes(query)) : medicines
+    const matches = query ? medicines.filter((medicine) => medicineSearchText(medicine).includes(query)) : medicines
+    const source = selectedMedicine && !query ? [selectedMedicine, ...matches.filter((medicine) => medicine.id !== selectedMedicine.id)] : matches
     return source.slice(0, 8)
-  }, [medicineSearch, medicines])
-
-  const selectedMedicine = medicines.find((medicine) => medicine.id === addMedicineId)
+  }, [medicineSearch, medicines, selectedMedicine])
 
   const stats = useMemo(() => {
     const totalUnits = items.reduce((sum, item) => sum + item.quantity, 0)
@@ -767,15 +768,41 @@ export default function PharmacyInventoryPage() {
                     </div>
                   ) : (
                     <div className="grid gap-2">
+                      {selectedMedicine ? (
+                        <div className="flex items-center justify-between gap-3 rounded-lg border bg-primary/10 px-3 py-2 text-xs">
+                          <span className="min-w-0">
+                            <span className="block text-muted-foreground">Selected medicine</span>
+                            <span className="block truncate font-medium text-foreground">{medicineLabel(selectedMedicine)}</span>
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-7 shrink-0"
+                            aria-label="Clear selected medicine"
+                            onClick={() => {
+                              setAddMedicineId("")
+                              setMedicineSearch("")
+                            }}
+                          >
+                            <XIcon className="size-4" />
+                          </Button>
+                        </div>
+                      ) : null}
                       <Input
                         value={medicineSearch}
-                        onChange={(event) => setMedicineSearch(event.target.value)}
-                        placeholder={`Search ${medicines.length} catalog medicines`}
+                        onChange={(event) => {
+                          setMedicineSearch(event.target.value)
+                          setAddErrors((current) => ({ ...current, medicineId: undefined }))
+                        }}
+                        placeholder={selectedMedicine ? "Search catalog to change selection" : `Search ${medicines.length} catalog medicines`}
                         aria-invalid={Boolean(addErrors.medicineId)}
                       />
                       <div className="max-h-56 overflow-y-auto rounded-lg border bg-background">
                         {filteredMedicines.length === 0 ? (
-                          <div className="p-3 text-xs text-muted-foreground">No catalog match. Use Add missing to create a medicine entry.</div>
+                          <div className="p-3 text-xs text-muted-foreground">
+                            No matching catalog medicines for <span className="font-medium text-foreground">{medicineSearch.trim()}</span>. Use Add missing if this medicine is not in the catalog.
+                          </div>
                         ) : filteredMedicines.map((medicine) => (
                           <button
                             key={medicine.id}
@@ -783,7 +810,7 @@ export default function PharmacyInventoryPage() {
                             className={cn("flex w-full items-start justify-between gap-3 border-b px-3 py-2 text-left text-sm last:border-b-0 hover:bg-secondary/70", addMedicineId === medicine.id && "bg-primary/10")}
                             onClick={() => {
                               setAddMedicineId(medicine.id)
-                              setMedicineSearch(medicineLabel(medicine))
+                              setMedicineSearch("")
                               setAddErrors((current) => ({ ...current, medicineId: undefined }))
                             }}
                           >
@@ -795,11 +822,6 @@ export default function PharmacyInventoryPage() {
                           </button>
                         ))}
                       </div>
-                      {selectedMedicine ? (
-                        <div className="rounded-lg border bg-muted/30 p-2 text-xs text-muted-foreground">
-                          Selected: <span className="font-medium text-foreground">{medicineLabel(selectedMedicine)}</span>
-                        </div>
-                      ) : null}
                       {addErrors.medicineId ? <span id="add-medicine-error" className="text-xs text-destructive">{addErrors.medicineId}</span> : null}
                     </div>
                   )}
