@@ -5,7 +5,35 @@ import { aiChatMessages, aiChatSessions, medicines, medicineAliases } from "../d
 const disclaimer =
   "This assistant provides medication information only and is not a substitute for professional medical advice. Always consult a healthcare professional for diagnosis and treatment."
 
-const welcomeMessage = "Hello. What medication information can I help you with?"
+const welcomeMessage = "Hello. Ask about a medicine by name and I will answer only from the MAP catalog and public medicine label sources."
+
+type AssistantIntent = "availability" | "dosage" | "interactions" | "side_effects" | "storage" | "uses" | "warnings" | "general"
+
+type MedicineMatch = {
+  id: string | null
+  name: string
+  form: string | null
+  strength: string | null
+  category: string | null
+  manufacturer: string | null
+  sourceNote?: string
+}
+
+type SourceSection = {
+  label: string
+  text: string
+}
+
+type MedicineEvidence = {
+  medicine: MedicineMatch
+  sections: SourceSection[]
+  sources: string[]
+}
+
+type AssistantEvidence = {
+  intent: AssistantIntent
+  medicines: MedicineEvidence[]
+}
 
 // Common conversational/medical stop words to isolate candidate drug names when no local directory match exists
 const STOP_WORDS = new Set([
@@ -20,74 +48,172 @@ const STOP_WORDS = new Set([
   "please", "tell", "need", "info", "information", "detail", "details",
   "give", "gives", "given", "giving", "show", "shows", "shown", "showing",
   "good", "better", "best", "safe", "safety", "danger", "dangerous", "bad",
-  "than", "then", "their", "there", "them", "they", "this", "that", "these", "those"
+  "than", "then", "their", "there", "them", "they", "this", "that", "these", "those",
+  "for", "and", "the", "are", "was", "were", "can", "may", "use", "uses", "used",
+  "watch", "know", "guide", "guidance", "label", "labels"
 ])
 
 function titleFromContent(content: string) {
   return content.length > 34 ? `${content.slice(0, 31)}...` : content
 }
 
-/**
- * Fetch official FDA clinical label details from the U.S. National Library of Medicine public API.
- * Requires no API key and returns structured prescribing guidelines, side effects, and warnings.
- */
-async function fetchOpenFDADetails(medName: string): Promise<string> {
-  try {
-    const url = `https://api.fda.gov/drug/label.json?search=openfda.brand_name:"${encodeURIComponent(medName)}"+openfda.generic_name:"${encodeURIComponent(medName)}"&limit=1`
-    const res = await fetch(url)
-    if (!res.ok) return ""
-    
-    const data = await res.json() as {
-      results?: Array<{
-        indications_and_usage?: string[];
-        adverse_reactions?: string[];
-        warnings?: string[];
-        precautions?: string[];
-        dosage_and_administration?: string[];
-      }>;
-    }
-    
-    const result = data.results?.[0]
-    if (!result) return ""
+function normalizeText(value: string) {
+  return value.replace(/\s+/g, " ").trim()
+}
 
-    let details = ""
-    if (result.indications_and_usage && Array.isArray(result.indications_and_usage)) {
-      details += `  - Indications & Usage: ${result.indications_and_usage.join(" ").slice(0, 500)}...\n`
-    }
-    if (result.adverse_reactions && Array.isArray(result.adverse_reactions)) {
-      details += `  - Side Effects (Adverse Reactions): ${result.adverse_reactions.join(" ").slice(0, 500)}...\n`
-    }
-    
-    const warningsList = result.warnings || result.precautions
-    if (warningsList && Array.isArray(warningsList)) {
-      details += `  - Warnings & Precautions: ${warningsList.join(" ").slice(0, 500)}...\n`
-    }
-    
-    if (result.dosage_and_administration && Array.isArray(result.dosage_and_administration)) {
-      details += `  - Dosage & Administration: ${result.dosage_and_administration.join(" ").slice(0, 500)}...\n`
-    }
-    return details
-  } catch (err) {
-    console.error(`Error querying OpenFDA for ${medName}:`, err)
-    return ""
+function truncateText(value: string, maxLength = 900) {
+  const normalized = normalizeText(value)
+  return normalized.length > maxLength ? `${normalized.slice(0, maxLength).trim()}...` : normalized
+}
+
+function medicineDisplayName(medicine: Pick<MedicineMatch, "name" | "form" | "strength">) {
+  return [medicine.name, medicine.strength, medicine.form ? `(${medicine.form})` : ""].filter(Boolean).join(" ")
+}
+
+function extractCandidateTerms(question: string) {
+  const cleaned = question
+    .toLowerCase()
+    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, " ")
+    .split(/\s+/)
+    .map((word) => word.trim())
+    .filter((word) => word.length >= 3 && !STOP_WORDS.has(word))
+
+  return Array.from(new Set(cleaned)).slice(0, 6)
+}
+
+function inferIntent(question: string): AssistantIntent {
+  const q = question.toLowerCase()
+  if (/(find|near|stock|available|availability|pharmacy|pharmacies)/.test(q)) return "availability"
+  if (/(side effect|side effects|adverse|reaction|reactions)/.test(q)) return "side_effects"
+  if (/(interact|interaction|mix|together|combine)/.test(q)) return "interactions"
+  if (/(storage|store|keep|temperature|refrigerat)/.test(q)) return "storage"
+  if (/(dosage|dose|how to take|take it|administration|missed dose)/.test(q)) return "dosage"
+  if (/(warning|precaution|avoid|contraindicat|pregnan|breastfeed|breastfeeding)/.test(q)) return "warnings"
+  if (/(used for|indication|indications|treat|treats|use|uses)/.test(q)) return "uses"
+  return "general"
+}
+
+async function inferIntentWithLLM(question: string): Promise<AssistantIntent | null> {
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) return null
+
+  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash"
+  const apiUrl = process.env.GEMINI_API_URL || `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text:
+                  "Classify the user's medicine question intent. Return only one label from this list: " +
+                  "availability, dosage, interactions, side_effects, storage, uses, warnings, general.\n\n" +
+                  `Question: ${question}`,
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: 0,
+          maxOutputTokens: 10,
+        },
+      }),
+    })
+
+    if (!response.ok) return null
+    const data = (await response.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
+    const label = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim().toLowerCase()
+    const allowed = new Set<AssistantIntent>(["availability", "dosage", "interactions", "side_effects", "storage", "uses", "warnings", "general"])
+    return allowed.has(label as AssistantIntent) ? label as AssistantIntent : null
+  } catch (error) {
+    console.error("Failed to classify assistant intent:", error)
+    return null
   }
 }
 
-async function getMedicinesContext(question: string): Promise<string> {
-  const words = question
-    .toLowerCase()
-    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "")
-    .split(/\s+/)
-    .filter((w) => w.length >= 3)
+function openFdaSearchUrl(medName: string) {
+  const params = new URLSearchParams({
+    search: `openfda.generic_name:"${medName}" OR openfda.brand_name:"${medName}"`,
+    limit: "1",
+  })
+  return `https://api.fda.gov/drug/label.json?${params.toString()}`
+}
 
-  if (words.length === 0) return ""
+async function fetchOpenFDASections(medName: string): Promise<SourceSection[]> {
+  try {
+    const url = openFdaSearchUrl(medName)
+    const res = await fetch(url)
+    if (!res.ok) return []
+    
+    const data = await res.json() as {
+      results?: Array<{
+        indications_and_usage?: string[]
+        adverse_reactions?: string[]
+        warnings?: string[]
+        boxed_warning?: string[]
+        precautions?: string[]
+        contraindications?: string[]
+        dosage_and_administration?: string[]
+        drug_interactions?: string[]
+        storage_and_handling?: string[]
+        how_supplied?: string[]
+      }>
+    }
+    
+    const result = data.results?.[0]
+    if (!result) return []
 
-  // Search public medicines table and medicine_aliases table
-  const conditions = words.map((word) => ilike(medicines.name, `%${word}%`))
-  const aliasConditions = words.map((word) => ilike(medicineAliases.alias, `%${word}%`))
+    const fields: Array<[string, string[] | undefined]> = [
+      ["Uses / indications", result.indications_and_usage],
+      ["Adverse reactions", result.adverse_reactions],
+      ["Warnings", result.warnings],
+      ["Boxed warning", result.boxed_warning],
+      ["Precautions", result.precautions],
+      ["Contraindications", result.contraindications],
+      ["Dosage and administration", result.dosage_and_administration],
+      ["Drug interactions", result.drug_interactions],
+      ["Storage and handling", result.storage_and_handling],
+      ["How supplied", result.how_supplied],
+    ]
+
+    return fields
+      .filter(([, values]) => Array.isArray(values) && values.length > 0)
+      .map(([label, values]) => ({ label, text: truncateText(values!.join(" ")) }))
+  } catch (err) {
+    console.error(`Error querying OpenFDA for ${medName}:`, err)
+    return []
+  }
+}
+
+function selectSectionsForIntent(sections: SourceSection[], intent: AssistantIntent) {
+  if (intent === "availability") return []
+  if (intent === "general") return sections.slice(0, 5)
+
+  const patterns: Record<Exclude<AssistantIntent, "availability" | "general">, RegExp> = {
+    dosage: /dosage|administration|how supplied/,
+    interactions: /interaction/,
+    side_effects: /adverse|reaction/,
+    storage: /storage|handling|supplied/,
+    uses: /uses|indication/,
+    warnings: /warning|boxed|precaution|contraindication/,
+  }
+
+  const selected = sections.filter((section) => patterns[intent].test(section.label.toLowerCase()))
+  return selected.length ? selected : sections.slice(0, 4)
+}
+
+async function findLocalMedicines(question: string): Promise<MedicineMatch[]> {
+  const terms = extractCandidateTerms(question)
+  if (terms.length === 0) return []
+
+  const conditions = terms.map((word) => ilike(medicines.name, `%${word}%`))
+  const aliasConditions = terms.map((word) => ilike(medicineAliases.alias, `%${word}%`))
 
   try {
-    // Search medicines directly
     const matchedMedicines = await db
       .select()
       .from(medicines)
@@ -109,78 +235,97 @@ async function getMedicinesContext(question: string): Promise<string> {
       .where(or(...aliasConditions))
       .limit(5)
 
-    // Merge and deduplicate
     const allMatchesMap = new Map<string, typeof medicines.$inferSelect>()
     for (const med of [...matchedMedicines, ...matchedAliases]) {
       allMatchesMap.set(med.id, med)
     }
-    const deduped = Array.from(allMatchesMap.values())
 
-    if (deduped.length === 0) {
-      // Hybrid Fallback: If no local medicine matches, check if any typed words look like a candidate drug name
-      const candidateMedWords = words.filter((w) => !STOP_WORDS.has(w))
-      if (candidateMedWords.length > 0) {
-        const candidateWord = candidateMedWords[0]
-        const fdaDetails = await fetchOpenFDADetails(candidateWord)
-        if (fdaDetails) {
-          const capitalizedName = candidateWord.charAt(0).toUpperCase() + candidateWord.slice(1)
-          return `Retrieved medicine specifications for "${capitalizedName}" (Note: This medication is NOT currently registered in our local pharmacy stock directory):\n` +
-                 `- Name: ${capitalizedName}\n` +
-                 `  FDA Reference Details:\n${fdaDetails}`
-        }
-      }
-      return ""
-    }
-
-    // Dynamic FDA fetch: retrieve FDA details in parallel for up to the top 2 matched local medicines
-    const fdaPromises = deduped.slice(0, 2).map(async (med) => {
-      const fdaData = await fetchOpenFDADetails(med.name)
-      return { medId: med.id, fdaData }
-    })
-    const fdaResultsList = await Promise.all(fdaPromises)
-    const fdaMap = new Map<string, string>()
-    for (const res of fdaResultsList) {
-      if (res.fdaData) fdaMap.set(res.medId, res.fdaData)
-    }
-
-    // Format a clean text context
-    let context = "Retrieved medicine specifications:\n"
-    for (const med of deduped) {
-      context += `- Name: ${med.name}\n  Category: ${med.category}\n  Form: ${med.form}\n  Strength: ${med.strength || "N/A"}\n  Manufacturer: ${med.manufacturer || "N/A"}\n`
-      const fdaDetails = fdaMap.get(med.id)
-      if (fdaDetails) {
-        context += `  FDA Reference Details:\n${fdaDetails}`
-      }
-    }
-    return context
+    return Array.from(allMatchesMap.values()).map((medicine) => ({
+      id: medicine.id,
+      name: medicine.name,
+      form: medicine.form,
+      strength: medicine.strength,
+      category: medicine.category,
+      manufacturer: medicine.manufacturer,
+    }))
   } catch (e) {
-    console.error("Error retrieving medicine context:", e)
-    return ""
+    console.error("Error retrieving medicine matches:", e)
+    return []
   }
 }
 
-async function generateLLMResponse(question: string, context: string): Promise<string | null> {
+async function buildAssistantEvidence(question: string, intent: AssistantIntent): Promise<AssistantEvidence> {
+  const localMatches = await findLocalMedicines(question)
+  const matches = localMatches.length
+    ? localMatches
+    : extractCandidateTerms(question).slice(0, 2).map((term) => ({
+        id: null,
+        name: term.charAt(0).toUpperCase() + term.slice(1),
+        form: null,
+        strength: null,
+        category: null,
+        manufacturer: null,
+        sourceNote: "Not found in the MAP medicine catalog. Public label lookup was attempted.",
+      }))
+
+  const evidence = await Promise.all(matches.slice(0, 4).map(async (medicine): Promise<MedicineEvidence> => {
+    const labelSections = await fetchOpenFDASections(medicine.name)
+    const sections: SourceSection[] = [
+      {
+        label: "MAP catalog",
+        text: [
+          `Name: ${medicine.name}`,
+          medicine.category ? `Category: ${medicine.category}` : null,
+          medicine.form ? `Form: ${medicine.form}` : null,
+          medicine.strength ? `Strength: ${medicine.strength}` : null,
+          medicine.manufacturer ? `Catalog source/manufacturer: ${medicine.manufacturer}` : null,
+          medicine.sourceNote ?? null,
+        ].filter(Boolean).join(". "),
+      },
+      ...selectSectionsForIntent(labelSections, intent),
+    ]
+
+    const sources = ["MAP medicine catalog"]
+    if (labelSections.length) sources.push("openFDA drug label API")
+
+    return { medicine, sections, sources }
+  }))
+
+  return { intent, medicines: evidence.filter((item) => item.sections.length > 0) }
+}
+
+function formatEvidenceContext(evidence: AssistantEvidence) {
+  return evidence.medicines.map((item, index) => {
+    const sections = item.sections.map((section) => `  - ${section.label}: ${section.text}`).join("\n")
+    return `${index + 1}. ${medicineDisplayName(item.medicine)}\n${sections}\n  - Sources: ${item.sources.join("; ")}`
+  }).join("\n\n")
+}
+
+function hasExternalLabelEvidence(evidence: AssistantEvidence) {
+  return evidence.medicines.some((item) => item.sources.includes("openFDA drug label API"))
+}
+
+async function generateGroundedLLMResponse(question: string, evidence: AssistantEvidence): Promise<string | null> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return null
+  if (!evidence.medicines.length) return null
 
   const model = process.env.GEMINI_MODEL || "gemini-2.5-flash"
   const apiUrl = process.env.GEMINI_API_URL || `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
 
-  const systemInstruction =
-    "You are Antigravity, a professional clinical medication guide assistant for the Medicine Access Platform (MAP). " +
-    "Your goal is to provide concise, accurate, and professional public information regarding medication uses, " +
-    "precautions, storage, and side effects. Always maintain a helpful, clinical, yet accessible tone. " +
-    "Be extremely concise and summarize when needed. Do not make up facts. Never provide patient-specific diagnostic advice. " +
-    "Always end with a short general disclaimer reminding the user to consult a healthcare professional for medical decisions."
-
   const prompt = `
-System Instruction: ${systemInstruction}
+You are Antigravity, the MAP medication guide.
+Answer the user using only SOURCE_CONTEXT below.
+Do not add medicine facts, dosage advice, safety claims, or side effects that are not present in SOURCE_CONTEXT.
+If SOURCE_CONTEXT does not answer the question, say the available sources do not contain enough detail and suggest asking a pharmacist or clinician.
+Keep the answer short, simple, and professional.
+End with "Sources used:" and list only the sources present in SOURCE_CONTEXT.
+End with this disclaimer: ${disclaimer}
 
-${context ? `Use the following verified public medicine database information for reference:\n${context}` : ""}
+SOURCE_CONTEXT:
+${formatEvidenceContext(evidence)}
 
 User Question: ${question}
-
-Provide a clean and concise response:
 `
 
   try {
@@ -201,6 +346,10 @@ Provide a clean and concise response:
               ],
             },
           ],
+          generationConfig: {
+            temperature: 0,
+            maxOutputTokens: 900,
+          },
         }),
       }
     )
@@ -229,43 +378,36 @@ Provide a clean and concise response:
   }
 }
 
-function getAssistantResponse(question: string, medicineContext: string): string {
+function getAssistantResponse(question: string, evidence: AssistantEvidence): string {
   const q = question.toLowerCase()
 
   if (/(diagnos|what do i have|am i sick|should i take|can i stop|emergency|chest pain|can't breathe|suicide)/.test(q)) {
     return `I cannot diagnose symptoms or tell you to start, stop, or change treatment. Please contact a licensed clinician. If this is urgent, seek emergency care now.\n\n${disclaimer}`
   }
 
-  if (medicineContext) {
-    return `Here is what I found in our verified medicine catalog matching your query:\n\n${medicineContext}\n` +
-           `For details about dosage, storage, safety, or side effects for these medications, consult a pharmacist or clinician. Always follow the guidelines on your prescription labels.\n\n${disclaimer}`
+  if (evidence.intent === "availability") {
+    return `Use the Find Medicine page to search verified pharmacy stock, prices, and recent update times. If there is no match, send an availability request so pharmacies can respond.\n\nSources used: MAP medicine catalog and inventory workflow.\n\n${disclaimer}`
   }
 
-  if (q.includes("side effect") || q.includes("side effects")) {
-    return `Common medication side effects can include nausea, dizziness, headache, sleep changes, stomach upset, or rash, depending on the medicine. Serious symptoms such as swelling, breathing trouble, severe rash, fainting, or chest pain need urgent medical attention.\n\n${disclaimer}`
+  if (!evidence.medicines.length) {
+    return `I could not match a medicine name in the MAP catalog or public label data. Please ask again with the medicine name, for example "side effects of amoxicillin" or "storage for insulin".\n\nSources used: MAP medicine catalog lookup.\n\n${disclaimer}`
   }
 
-  if (q.includes("interaction") || q.includes("mix") || q.includes("together")) {
-    return `Drug interactions depend on the exact medicines, doses, age, pregnancy status, kidney or liver function, and other conditions. Share the full medicine list with a pharmacist or clinician before combining medicines.\n\n${disclaimer}`
-  }
+  const details = evidence.medicines.map((item) => {
+    const header = medicineDisplayName(item.medicine)
+    const sections = item.sections
+      .slice(0, hasExternalLabelEvidence(evidence) ? 4 : 1)
+      .map((section) => `- ${section.label}: ${section.text}`)
+      .join("\n")
+    return `${header}\n${sections}`
+  }).join("\n\n")
 
-  if (q.includes("pregnan") || q.includes("breastfeed")) {
-    return `Medicine safety during pregnancy or breastfeeding varies by medicine and trimester. A clinician or pharmacist should check the exact medicine before use.\n\n${disclaimer}`
-  }
+  const sourceNames = Array.from(new Set(evidence.medicines.flatMap((item) => item.sources))).join("; ")
+  const limitation = hasExternalLabelEvidence(evidence)
+    ? "I only used the source text above. Ask a pharmacist or clinician before making medicine decisions."
+    : "I found catalog details, but no public label sections for this question. Ask a pharmacist or clinician for clinical guidance."
 
-  if (q.includes("storage") || q.includes("store")) {
-    return `Most medicines should be stored in a cool, dry place away from direct sunlight and children. Some medicines need refrigeration or special handling, so always check the label.\n\n${disclaimer}`
-  }
-
-  if (q.includes("how to take") || q.includes("dosage") || q.includes("dose")) {
-    return `Follow the dose and timing on your prescription label or package instructions. Do not double doses after a missed dose unless a clinician or pharmacist tells you to.\n\n${disclaimer}`
-  }
-
-  if (q.includes("find") || q.includes("near") || q.includes("stock") || q.includes("available")) {
-    return `Use the Find Medicine page to search verified pharmacy stock, prices, and recent update times. If there is no match, send an availability request so pharmacies can respond.\n\n${disclaimer}`
-  }
-
-  return `I can help with general information about medicine uses, side effects, storage, precautions, interactions, and how to search nearby pharmacy stock. For diagnosis, treatment decisions, or urgent symptoms, speak with a healthcare professional.\n\n${disclaimer}`
+  return `Here is what I found from available source data:\n\n${details}\n\n${limitation}\n\nSources used: ${sourceNames}.\n\n${disclaimer}`
 }
 
 async function formatSession(sessionId: string) {
@@ -362,13 +504,15 @@ export async function sendAssistantMessage(patientProfileId: string, sessionId: 
       .where(eq(aiChatSessions.id, sessionId))
   }
 
-  // 1. Fetch public database medicines context
-  const medicineContext = await getMedicinesContext(content)
+  const blockedQuestion = /(diagnos|what do i have|am i sick|should i take|can i stop|emergency|chest pain|can't breathe|suicide)/.test(content.toLowerCase())
+  const intent = blockedQuestion ? "general" : await inferIntentWithLLM(content) ?? inferIntent(content)
+  const evidence = blockedQuestion || intent === "availability"
+    ? { intent, medicines: [] } satisfies AssistantEvidence
+    : await buildAssistantEvidence(content, intent)
 
-  // 2. Generate response via LLM or local RAG engine fallback
-  let reply = await generateLLMResponse(content, medicineContext)
+  let reply = blockedQuestion || intent === "availability" ? null : await generateGroundedLLMResponse(content, evidence)
   if (!reply) {
-    reply = getAssistantResponse(content, medicineContext)
+    reply = getAssistantResponse(content, evidence)
   }
 
   await db.insert(aiChatMessages).values({

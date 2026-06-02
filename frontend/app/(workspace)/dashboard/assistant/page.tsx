@@ -18,9 +18,9 @@ const disclaimer =
   "This assistant provides medication information only and is not a substitute for professional medical advice. Always consult a healthcare professional for diagnosis and treatment."
 
 const quickPrompts = [
-  "What side effects should I watch for?",
-  "How should I store my medicine?",
-  "Can two medicines interact?",
+  "What are the side effects of metformin?",
+  "What is amoxicillin used for?",
+  "How should insulin be stored?",
   "How do I find stock near me?",
 ]
 
@@ -221,7 +221,7 @@ export default function AssistantPage() {
         </div>
 
         <div className="border-t pt-3 text-[10px] leading-relaxed text-muted-foreground shrink-0">
-          Informational guidance only. Urgent or diagnostic questions need a clinician.
+          Answers are limited to MAP catalog data and public medicine label sources.
         </div>
       </aside>
 
@@ -239,7 +239,7 @@ export default function AssistantPage() {
               <BotIcon className="size-5 text-primary" />
               MAP Medication Guide
             </CardTitle>
-            <CardDescription className="text-xs">Ask about medicines, side effects, storage, and health guidelines.</CardDescription>
+            <CardDescription className="text-xs">Ask with a medicine name. Responses are grounded in catalog and public label data.</CardDescription>
           </CardHeader>
           
           <CardContent className="flex flex-1 flex-col overflow-hidden p-0 bg-background">
@@ -268,7 +268,7 @@ export default function AssistantPage() {
                       {message.sender === "assistant" ? (
                         <div className="mt-2.5 flex items-center gap-1.5">
                           <Badge variant="outline" className="bg-background/50 text-[10px] font-semibold border-primary/20 text-primary px-1.5 py-0">
-                            Verified medication info
+                            Source-backed answer
                           </Badge>
                         </div>
                       ) : null}
@@ -319,7 +319,7 @@ export default function AssistantPage() {
 
               <form className="flex gap-2 relative items-center" onSubmit={handleSend}>
                 <Input
-                  placeholder="Ask about a medication..."
+                  placeholder="Ask about a named medicine..."
                   value={input}
                   onChange={(event) => setInput(event.target.value)}
                   disabled={thinking || !activeSession}
