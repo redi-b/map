@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { toast } from "@/lib/toast"
 
@@ -82,6 +83,27 @@ type NewMedicineForm = {
 
 const stockLabels = { in_stock: "In stock", low_stock: "Low stock", out_of_stock: "Out of stock" }
 const stockVariants = { in_stock: "default", low_stock: "secondary", out_of_stock: "outline" } as const
+
+function StockStatusHelp() {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={(
+          <button
+            type="button"
+            className="inline-flex size-5 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Stock status help"
+          >
+            <HelpCircleIcon className="size-3.5" />
+          </button>
+        )}
+      />
+      <TooltipContent side="top" align="start" className="max-w-56 leading-relaxed">
+        Auto uses quantity: 0 out of stock, 1-9 low stock, 10+ in stock.
+      </TooltipContent>
+    </Tooltip>
+  )
+}
 
 const headerAliases = {
   medicineId: ["medicineid", "medicine_id", "id"],
@@ -857,19 +879,21 @@ export default function PharmacyInventoryPage() {
                 {addErrors.price ? <span className="text-xs text-destructive">{addErrors.price}</span> : null}
               </label>
               <label className="grid gap-1 text-sm font-medium">
-                Status
+                <span className="flex items-center gap-1.5">
+                  Status
+                  <StockStatusHelp />
+                </span>
                 <Select value={addStockStatus} onValueChange={(value) => setAddStockStatus((value ?? "auto") as EditableStockStatus)}>
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      <SelectItem value="auto">Auto: 0 out, 1-9 low, 10+ in stock</SelectItem>
+                      <SelectItem value="auto">Auto</SelectItem>
                       <SelectItem value="in_stock">In stock</SelectItem>
                       <SelectItem value="low_stock">Low stock</SelectItem>
                       <SelectItem value="out_of_stock">Out of stock</SelectItem>
                     </SelectGroup>
                   </SelectContent>
                 </Select>
-                <span className="text-xs text-muted-foreground">Auto status uses quantity: 0 out, 1-9 low, 10+ in stock.</span>
               </label>
               <label className="grid gap-1 text-sm font-medium">
                 Expiry date
@@ -951,7 +975,7 @@ export default function PharmacyInventoryPage() {
                             <SelectTrigger size="sm" className="w-36"><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectGroup>
-                                <SelectItem value="auto">Auto: 0 out, 1-9 low, 10+ in stock</SelectItem>
+                                <SelectItem value="auto">Auto</SelectItem>
                                 <SelectItem value="in_stock">In stock</SelectItem>
                                 <SelectItem value="low_stock">Low stock</SelectItem>
                                 <SelectItem value="out_of_stock">Out of stock</SelectItem>
