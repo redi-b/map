@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { toast } from "@/lib/toast"
 import { cn } from "@/lib/utils"
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"
@@ -55,6 +56,16 @@ export function NotificationBell() {
   const [loading, setLoading] = useState(false)
   const [markingId, setMarkingId] = useState("")
   const containerRef = useRef<HTMLDivElement>(null)
+  const initializedToastIdsRef = useRef(false)
+  const toastedNotificationIdsRef = useRef<Set<string> | null>(null)
+
+  function getToastedNotificationIds() {
+    if (!toastedNotificationIdsRef.current) {
+      toastedNotificationIdsRef.current = new Set<string>()
+    }
+
+    return toastedNotificationIdsRef.current
+  }
 
   useEffect(() => {
     if (!open) return
@@ -74,6 +85,31 @@ export function NotificationBell() {
         const data = await res.json()
         setUnreadCount(data.unread)
       }
+
+      const unreadRes = await fetch(`${apiBaseUrl}/api/notifications?unread=true`, { credentials: "include" })
+      if (!unreadRes.ok) return
+
+      const data = await unreadRes.json() as { items: Notification[] }
+      const reminderItems = data.items.filter((item) => item.source === "reminder")
+      const toastedIds = getToastedNotificationIds()
+
+      if (!initializedToastIdsRef.current) {
+        reminderItems.forEach((item) => toastedIds.add(item.id))
+        initializedToastIdsRef.current = true
+        return
+      }
+
+      const newReminderItems = reminderItems.filter((item) => !toastedIds.has(item.id))
+      reminderItems.forEach((item) => toastedIds.add(item.id))
+
+      newReminderItems
+        .slice()
+        .reverse()
+        .slice(0, 3)
+        .forEach((item) => {
+          const title = item.message.startsWith("Overdue") ? "Dose overdue" : item.message.startsWith("Refill") ? "Refill reminder" : "Dose reminder"
+          toast.info(title, item.message)
+        })
     } catch {
       // silently fail — not critical
     }
@@ -121,6 +157,8 @@ export function NotificationBell() {
       })
       setUnreadCount(0)
       setItems((prev) => prev.map((n) => ({ ...n, isRead: true })))
+      toastedNotificationIdsRef.current = null
+      initializedToastIdsRef.current = false
     } catch {
       // silently fail
     }
@@ -134,6 +172,7 @@ export function NotificationBell() {
         credentials: "include",
       })
       setItems((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)))
+      getToastedNotificationIds().add(id)
       setUnreadCount((count) => {
         const item = items.find((notification) => notification.id === id)
         return item && !item.isRead ? Math.max(0, count - 1) : count
