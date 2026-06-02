@@ -24,7 +24,7 @@ const features = [
   {
     icon: MapPinIcon,
     title: "Search nearby stock",
-    description: "See matching pharmacies by medicine name, neighborhood, pickup, delivery, and price.",
+    description: "Compare stocked pharmacies by medicine name, distance, pickup, delivery, price, and expiry guidance.",
   },
   {
     icon: ClipboardCheckIcon,
@@ -76,15 +76,15 @@ const workflow = [
 ]
 
 const stats = [
-  { value: "4+", label: "Verified pharmacies", sublabel: "across Addis Ababa" },
-  { value: "8+", label: "Medicines indexed", sublabel: "and growing" },
-  { value: "<2min", label: "First search", sublabel: "for new users" },
+  { value: "10+", label: "Verified pharmacies", sublabel: "across Addis Ababa" },
+  { value: "800+", label: "Medicines indexed", sublabel: "from the Ethiopia EML catalog" },
+  { value: "50+", label: "Stock records", sublabel: "ready for search" },
   { value: "24/7", label: "Available", sublabel: "search & reminders" },
 ]
 
 const capabilities = [
-  { icon: PackageSearchIcon, title: "Medicine search", description: "Real-time inventory from verified pharmacies across multiple neighborhoods." },
-  { icon: ClipboardCheckIcon, title: "Prescription workflow", description: "Upload, review, approve, or request resubmission — all tracked and auditable." },
+  { icon: PackageSearchIcon, title: "Medicine search", description: "Inventory from verified pharmacies across multiple Addis Ababa neighborhoods." },
+  { icon: ClipboardCheckIcon, title: "Prescription workflow", description: "Upload, review, approve, or request resubmission; all tracked and auditable." },
   { icon: BellIcon, title: "Adherence tracking", description: "Dose-by-dose schedules with taken/skipped logging and refill alerts." },
   { icon: BotIcon, title: "AI health assistant", description: "Informational medicine guidance with mandatory medical disclaimers." },
   { icon: HeartPulseIcon, title: "Care coordination", description: "Availability requests, delivery options, and proxy pickup for caregivers." },
@@ -126,10 +126,10 @@ export default function LandingPage() {
               <h2 className="mt-2 font-[var(--font-display)] text-3xl font-semibold">Amoxicillin 500mg</h2>
               <div className="mt-5 grid gap-3">
                 {[
-                  { name: "Lion Pharmacy, Bole", status: "In stock", variant: "default" as const },
-                  { name: "Wudassie Pharmacy, Kazanchis", status: "Low", variant: "secondary" as const },
-                  { name: "HealthPlus, Piazza", status: "In stock", variant: "default" as const },
-                  { name: "Red Cross, Megenagna", status: "In stock", variant: "default" as const },
+                  { name: "Milo Pharmacy, Summit", status: "84 in stock", variant: "default" as const },
+                  { name: "Red Cross Pharmacy, Arada", status: "60 in stock", variant: "default" as const },
+                  { name: "Bole Pharmacy, Africa Avenue", status: "24 in stock", variant: "default" as const },
+                  { name: "Gishen Pharmacy, Piassa", status: "Out", variant: "outline" as const },
                 ].map((item) => (
                   <div key={item.name} className="flex items-center justify-between rounded-lg bg-background p-3">
                     <span>{item.name}</span>
