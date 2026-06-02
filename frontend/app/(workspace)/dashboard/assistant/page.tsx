@@ -221,7 +221,7 @@ export default function AssistantPage() {
         </div>
 
         <div className="border-t pt-3 text-[10px] leading-relaxed text-muted-foreground shrink-0">
-          Answers are limited to MAP catalog data and public medicine label sources.
+          Sources: Ethiopia EML catalog and openFDA drug labels. The model only summarizes retrieved source text.
         </div>
       </aside>
 
@@ -239,7 +239,9 @@ export default function AssistantPage() {
               <BotIcon className="size-5 text-primary" />
               MAP Medication Guide
             </CardTitle>
-            <CardDescription className="text-xs">Ask with a medicine name. Responses are grounded in catalog and public label data.</CardDescription>
+            <CardDescription className="text-xs">
+              Ask with a medicine name. Responses use the Ethiopia EML catalog and openFDA label sections; the model only summarizes retrieved source text.
+            </CardDescription>
           </CardHeader>
           
           <CardContent className="flex flex-1 flex-col overflow-hidden p-0 bg-background">

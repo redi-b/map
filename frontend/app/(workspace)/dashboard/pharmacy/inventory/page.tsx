@@ -658,6 +658,9 @@ export default function PharmacyInventoryPage() {
           <div>
             <CardTitle>Inventory list</CardTitle>
             <CardDescription>Search, edit, import, and inspect stock lines. Status can be auto-calculated from quantity or manually set.</CardDescription>
+            <p className="mt-2 max-w-3xl text-xs text-muted-foreground">
+              Catalog source: Ethiopian Essential Medicines List, 7th edition (October 2024), from the WHO National Essential Medicines Lists collection.
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <input
