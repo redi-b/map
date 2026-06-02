@@ -6,12 +6,17 @@ import {
   markAsRead,
   getUnreadCount,
 } from "../services/notification.js"
+import { syncAdherenceNotifications } from "../services/adherence.js"
 
 export const notificationRoutes: FastifyPluginAsync = async (app) => {
   /** GET /notifications — list recent notifications. */
   app.get("/notifications", async (request, reply) => {
     const context = await requireProfile(request, reply)
     if (!context) return
+
+    if (context.profile.role === "patient") {
+      await syncAdherenceNotifications(context.profile.id)
+    }
 
     const { unread } = request.query as { unread?: string }
     const items = await listNotifications(context.profile.id, 30, unread === "true")
@@ -32,6 +37,10 @@ export const notificationRoutes: FastifyPluginAsync = async (app) => {
   app.get("/notifications/count", async (request, reply) => {
     const context = await requireProfile(request, reply)
     if (!context) return
+
+    if (context.profile.role === "patient") {
+      await syncAdherenceNotifications(context.profile.id)
+    }
 
     return { unread: await getUnreadCount(context.profile.id) }
   })

@@ -612,6 +612,19 @@ export async function createReminder(input: {
   return response.json()
 }
 
+export async function deleteReminder(id: string) {
+  const response = await fetch(`${apiBaseUrl}/api/reminders/${id}`, {
+    method: "DELETE",
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Unable to delete reminder")
+  }
+
+  return response.json() as Promise<{ success: true }>
+}
+
 export async function updateDoseEventStatus(id: string, status: DoseStatus) {
   const response = await fetch(`${apiBaseUrl}/api/dose-events/${id}`, {
     method: "PATCH",

@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from "fastify"
 import { requireProfile } from "../lib/auth-context.js"
 import {
   createReminder,
+  deleteReminder,
   listTodayAdherence,
   resetTodayDoseEvents,
   updateDoseEvent,
@@ -54,5 +55,19 @@ export const adherenceRoutes: FastifyPluginAsync = async (app) => {
 
     const resetCount = await resetTodayDoseEvents(context.profile.id)
     return { resetCount }
+  })
+
+  app.delete("/reminders/:id", async (request, reply) => {
+    const context = await requireProfile(request, reply, ["patient"])
+    if (!context) return
+
+    const { id } = request.params as { id: string }
+    const deleted = await deleteReminder(context.profile.id, id)
+
+    if (!deleted) {
+      return reply.status(404).send({ error: "Reminder not found" })
+    }
+
+    return { success: true }
   })
 }

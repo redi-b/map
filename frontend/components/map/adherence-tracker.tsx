@@ -10,6 +10,7 @@ import {
   RotateCcwIcon,
   SkipForwardIcon,
   SparklesIcon,
+  Trash2Icon,
   TrendingUpIcon,
 } from "lucide-react"
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react"
@@ -21,6 +22,7 @@ import { Progress } from "@/components/ui/progress"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   createReminder,
+  deleteReminder,
   getTodayAdherence,
   resetTodayAdherence,
   updateDoseEventStatus,
@@ -82,6 +84,7 @@ export function AdherenceTracker() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savingDoseId, setSavingDoseId] = useState("")
+  const [deletingReminderId, setDeletingReminderId] = useState("")
   const [error, setError] = useState("")
 
   const loadAdherence = useCallback(async () => {
@@ -144,6 +147,24 @@ export function AdherenceTracker() {
     }
   }
 
+  async function removeReminder(reminderId: string, medicine: string) {
+    if (!confirm(`Delete ${medicine} from today's adherence schedule?`)) return
+
+    setDeletingReminderId(reminderId)
+    setError("")
+
+    try {
+      await deleteReminder(reminderId)
+      await loadAdherence()
+      toast.success("Reminder deleted", `${medicine} was removed from your active schedule.`)
+    } catch {
+      setError("Unable to delete that reminder.")
+      toast.error("Reminder not deleted", "Try again in a moment.")
+    } finally {
+      setDeletingReminderId("")
+    }
+  }
+
   async function handleCreateReminder(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSaving(true)
@@ -187,8 +208,8 @@ export function AdherenceTracker() {
             <div className="space-y-4">
               <div>
                 <Badge variant="secondary" className="mb-3">{adherenceLevel.label}</Badge>
-                <h1 className="font-[var(--font-display)] text-3xl font-semibold">Medication adherence</h1>
-                <p className="mt-2 text-sm text-muted-foreground">{adherenceLevel.message}</p>
+                <h1 className="font-[var(--font-display)] text-3xl font-semibold">Medication adherence reminders</h1>
+                <p className="mt-2 text-sm text-muted-foreground">{adherenceLevel.message} MAP creates in-app notifications for due doses, overdue doses, and low supply while the app is active.</p>
               </div>
               <Progress value={summary.progress} />
               <div className="grid gap-2 text-sm sm:grid-cols-3">
@@ -203,7 +224,7 @@ export function AdherenceTracker() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base"><CalendarClockIcon className="size-4" /> Next dose</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-base"><CalendarClockIcon className="size-4" /> Next scheduled dose</CardTitle>
               <CardDescription>{nextDose ? `${nextDose.medicine} ${nextDose.dosage}` : completed ? "All scheduled doses are complete." : "No upcoming dose yet."}</CardDescription>
             </CardHeader>
             <CardContent>
@@ -214,7 +235,7 @@ export function AdherenceTracker() {
           <Card className={summary.refillAlerts ? "border-amber-500/30 bg-amber-500/5" : ""}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base"><BellRingIcon className="size-4" /> Refill watch</CardTitle>
-              <CardDescription>{summary.refillAlerts ? `${summary.refillAlerts} medicine${summary.refillAlerts === 1 ? "" : "s"} may need a refill soon.` : "No refill alerts from active reminders."}</CardDescription>
+              <CardDescription>{summary.refillAlerts ? `${summary.refillAlerts} medicine${summary.refillAlerts === 1 ? "" : "s"} may need a refill soon.` : "No refill alerts from active reminders."} Refill prompts appear in the notification bell.</CardDescription>
             </CardHeader>
           </Card>
         </div>
@@ -223,8 +244,8 @@ export function AdherenceTracker() {
       <section className="grid gap-4 xl:grid-cols-[1fr_22rem]">
         <Card>
           <CardHeader>
-            <CardTitle>Add reminder</CardTitle>
-            <CardDescription>Keep it simple: add the next scheduled dose and optional supply days.</CardDescription>
+            <CardTitle>Add adherence entry</CardTitle>
+            <CardDescription>Set the first dose time. Clear repeat patterns add same-day dose entries; supply days power refill notifications.</CardDescription>
           </CardHeader>
           <CardContent>
             <form className="grid gap-3 lg:grid-cols-[1fr_8rem_12rem_12rem_8rem_auto]" onSubmit={handleCreateReminder}>
@@ -237,7 +258,7 @@ export function AdherenceTracker() {
                 <Input value={dosage} onChange={(event) => setDosage(event.target.value)} placeholder="500mg" required />
               </label>
               <label className="grid gap-1 text-sm font-medium">
-                Frequency
+                Repeat pattern
                 <Select value={frequency} onValueChange={(value) => setFrequency(value ?? "Once daily")}>
                   <SelectTrigger className="w-full" aria-label="Frequency"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -248,7 +269,7 @@ export function AdherenceTracker() {
                 </Select>
               </label>
               <label className="grid gap-1 text-sm font-medium">
-                Next dose
+                First/next dose
                 <Input type="datetime-local" value={nextDoseAt} onChange={(event) => setNextDoseAt(event.target.value)} required />
               </label>
               <label className="grid gap-1 text-sm font-medium">
@@ -268,6 +289,7 @@ export function AdherenceTracker() {
             <CardTitle className="flex items-center gap-2 text-base"><SparklesIcon className="size-4" /> Helpful tips</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 text-sm text-muted-foreground">
+            <p>MAP checks due doses and low supply when the app is open, then shows in-app notifications in the bell.</p>
             <p>Mark doses as soon as you take them so your progress stays accurate.</p>
             <p>Use “Skip” only when a dose was intentionally missed. Ask a clinician before doubling doses.</p>
             <p>Add supply days to get refill warnings before medicine runs out.</p>
@@ -280,8 +302,8 @@ export function AdherenceTracker() {
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-[var(--font-display)] text-xl font-semibold">Today&apos;s schedule</h2>
-            <p className="text-sm text-muted-foreground">A timeline of doses scheduled for today. Use undo if a status was marked by mistake.</p>
+            <h2 className="font-[var(--font-display)] text-xl font-semibold">Today&apos;s dose log</h2>
+            <p className="text-sm text-muted-foreground">A timeline of dose entries scheduled for today. Use undo if a status was marked by mistake.</p>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={resetDoses} disabled={saving || !doses.length}>
             {saving ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <RotateCcwIcon data-icon="inline-start" />}
@@ -337,6 +359,10 @@ export function AdherenceTracker() {
                           Undo
                         </Button>
                       )}
+                      <Button size="sm" variant="ghost" onClick={() => void removeReminder(dose.reminderId, dose.medicine)} disabled={deletingReminderId === dose.reminderId}>
+                        {deletingReminderId === dose.reminderId ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <Trash2Icon data-icon="inline-start" />}
+                        Delete
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
