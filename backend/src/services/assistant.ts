@@ -320,7 +320,7 @@ Do not add medicine facts, dosage advice, safety claims, or side effects that ar
 If SOURCE_CONTEXT does not answer the question, say the available sources do not contain enough detail and suggest asking a pharmacist or clinician.
 Keep the answer short, simple, and professional.
 End with "Sources used:" and list only the sources present in SOURCE_CONTEXT.
-End with this disclaimer: ${disclaimer}
+Do not repeat the medical disclaimer. The app shows it persistently above the conversation.
 
 SOURCE_CONTEXT:
 ${formatEvidenceContext(evidence)}
@@ -382,15 +382,15 @@ function getAssistantResponse(question: string, evidence: AssistantEvidence): st
   const q = question.toLowerCase()
 
   if (/(diagnos|what do i have|am i sick|should i take|can i stop|emergency|chest pain|can't breathe|suicide)/.test(q)) {
-    return `I cannot diagnose symptoms or tell you to start, stop, or change treatment. Please contact a licensed clinician. If this is urgent, seek emergency care now.\n\n${disclaimer}`
+    return "I cannot diagnose symptoms or tell you to start, stop, or change treatment. Please contact a licensed clinician. If this is urgent, seek emergency care now."
   }
 
   if (evidence.intent === "availability") {
-    return `Use the Find Medicine page to search verified pharmacy stock, prices, and recent update times. If there is no match, send an availability request so pharmacies can respond.\n\nSources used: MAP medicine catalog and inventory workflow.\n\n${disclaimer}`
+    return "Use the Find Medicine page to search verified pharmacy stock, prices, and recent update times. If there is no match, send an availability request so pharmacies can respond.\n\nSources used: MAP inventory workflow."
   }
 
   if (!evidence.medicines.length) {
-    return `I could not match a medicine name in the MAP catalog or public label data. Please ask again with the medicine name, for example "side effects of amoxicillin" or "storage for insulin".\n\nSources used: MAP medicine catalog lookup.\n\n${disclaimer}`
+    return "I could not match a medicine name in the MAP catalog or public label data. Please ask again with the medicine name, for example \"side effects of amoxicillin\" or \"storage for insulin\".\n\nSources used: MAP medicine catalog lookup."
   }
 
   const details = evidence.medicines.map((item) => {
@@ -407,7 +407,7 @@ function getAssistantResponse(question: string, evidence: AssistantEvidence): st
     ? "I only used the source text above. Ask a pharmacist or clinician before making medicine decisions."
     : "I found catalog details, but no public label sections for this question. Ask a pharmacist or clinician for clinical guidance."
 
-  return `Here is what I found from available source data:\n\n${details}\n\n${limitation}\n\nSources used: ${sourceNames}.\n\n${disclaimer}`
+  return `Here is what I found from available source data:\n\n${details}\n\n${limitation}\n\nSources used: ${sourceNames}.`
 }
 
 async function formatSession(sessionId: string) {

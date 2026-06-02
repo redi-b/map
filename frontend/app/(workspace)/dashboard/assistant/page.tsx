@@ -24,6 +24,20 @@ const quickPrompts = [
   "How do I find stock near me?",
 ]
 
+function getAssistantBadge(content: string) {
+  if (!content.includes("Sources used:")) return null
+  if (content.includes("MAP inventory workflow")) {
+    return { label: "Platform guidance", className: "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300" }
+  }
+  if (content.includes("could not match") || content.includes("available sources do not contain enough detail")) {
+    return { label: "Source limited", className: "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300" }
+  }
+  if (content.includes("openFDA drug label API")) {
+    return { label: "Medicine label summary", className: "border-primary/20 bg-primary/10 text-primary" }
+  }
+  return { label: "Catalog lookup", className: "border-primary/20 bg-primary/10 text-primary" }
+}
+
 export default function AssistantPage() {
   const [sessions, setSessions] = useState<AssistantSession[]>([])
   const [activeSessionId, setActiveSessionId] = useState("")
@@ -221,7 +235,7 @@ export default function AssistantPage() {
         </div>
 
         <div className="border-t pt-3 text-[10px] leading-relaxed text-muted-foreground shrink-0">
-          Sources: Ethiopia EML catalog and openFDA drug labels. The model only summarizes retrieved source text.
+          Medicine answers use Ethiopia EML and openFDA labels. Stock and app guidance uses MAP workflow data. The model only summarizes retrieved source text.
         </div>
       </aside>
 
@@ -240,50 +254,54 @@ export default function AssistantPage() {
               MAP Medication Guide
             </CardTitle>
             <CardDescription className="text-xs">
-              Ask with a medicine name. Responses use the Ethiopia EML catalog and openFDA label sections; the model only summarizes retrieved source text.
+              Ask with a medicine name for label details, or ask how to use MAP features. Responses are separated by source type.
             </CardDescription>
           </CardHeader>
           
           <CardContent className="flex flex-1 flex-col overflow-hidden p-0 bg-background">
             {/* Scrollable messages container */}
             <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
-              {activeSession?.messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex items-start gap-3 w-full ${message.sender === "user" ? "justify-end" : "justify-start"}`}
-                >
-                  {message.sender !== "user" ? (
-                    <div className="flex size-8 shrink-0 select-none items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary text-xs font-semibold shadow-sm">
-                      <BotIcon className="size-4.5" />
-                    </div>
-                  ) : null}
-                  
-                  <div className="flex flex-col max-w-[75%]">
-                    <div
-                      className={`rounded-2xl p-3.5 text-sm shadow-sm transition-all duration-200 ${
-                        message.sender === "user" 
-                          ? "bg-primary text-primary-foreground rounded-tr-none" 
-                          : "bg-muted text-foreground rounded-tl-none border border-muted/50"
-                      }`}
-                    >
-                      <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
-                      {message.sender === "assistant" ? (
-                        <div className="mt-2.5 flex items-center gap-1.5">
-                          <Badge variant="outline" className="bg-background/50 text-[10px] font-semibold border-primary/20 text-primary px-1.5 py-0">
-                            Source-backed answer
-                          </Badge>
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
+              {activeSession?.messages.map((message) => {
+                const badge = message.sender === "assistant" ? getAssistantBadge(message.content) : null
 
-                  {message.sender === "user" ? (
-                    <div className="flex size-8 shrink-0 select-none items-center justify-center rounded-full border border-primary/20 bg-background text-primary text-xs font-semibold shadow-sm">
-                      <UserIcon className="size-4.5 text-primary/80" />
+                return (
+                  <div
+                    key={message.id}
+                    className={`flex items-start gap-3 w-full ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+                  >
+                    {message.sender !== "user" ? (
+                      <div className="flex size-8 shrink-0 select-none items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary text-xs font-semibold shadow-sm">
+                        <BotIcon className="size-4.5" />
+                      </div>
+                    ) : null}
+                    
+                    <div className="flex flex-col max-w-[75%]">
+                      <div
+                        className={`rounded-2xl p-3.5 text-sm shadow-sm transition-all duration-200 ${
+                          message.sender === "user" 
+                            ? "bg-primary text-primary-foreground rounded-tr-none" 
+                            : "bg-muted text-foreground rounded-tl-none border border-muted/50"
+                        }`}
+                      >
+                        <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                        {badge ? (
+                          <div className="mt-2.5 flex items-center gap-1.5">
+                            <Badge variant="outline" className={`text-[10px] font-semibold px-1.5 py-0 ${badge.className}`}>
+                              {badge.label}
+                            </Badge>
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
-                  ) : null}
-                </div>
-              ))}
+
+                    {message.sender === "user" ? (
+                      <div className="flex size-8 shrink-0 select-none items-center justify-center rounded-full border border-primary/20 bg-background text-primary text-xs font-semibold shadow-sm">
+                        <UserIcon className="size-4.5 text-primary/80" />
+                      </div>
+                    ) : null}
+                  </div>
+                )
+              })}
 
               {thinking ? (
                 <div className="flex items-start gap-3 justify-start animate-fade-in">
