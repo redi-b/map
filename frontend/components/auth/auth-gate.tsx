@@ -78,10 +78,10 @@ export function AuthGate({ children }: AuthGateProps) {
   if (failed) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-6">
-        <Card className="max-w-md">
+        <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Could not verify your session</CardTitle>
-            <CardDescription>Check that the API is running, then refresh this page.</CardDescription>
+            <CardDescription>The dashboard could not reach the API session check. Confirm the backend is running and using the migrated database, then refresh.</CardDescription>
           </CardHeader>
         </Card>
       </div>
@@ -95,7 +95,7 @@ export function AuthGate({ children }: AuthGateProps) {
   if (!allowed) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-6">
-        <Card className="max-w-md">
+        <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangleIcon className="size-5" />
