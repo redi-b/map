@@ -26,13 +26,13 @@ const quickPrompts = [
 
 function getAssistantBadge(content: string) {
   if (!content.includes("Sources used:")) return null
-  if (content.includes("MAP inventory workflow")) {
+  if (content.includes("MAP inventory workflow") || content.includes("MAP assistant safety workflow")) {
     return { label: "Platform guidance", className: "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300" }
   }
   if (content.includes("could not match") || content.includes("available sources do not contain enough detail")) {
     return { label: "Source limited", className: "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300" }
   }
-  if (content.includes("openFDA drug label API")) {
+  if (content.includes("openFDA drug label API") || content.includes("FDA insulin storage guidance")) {
     return { label: "Medicine label summary", className: "border-primary/20 bg-primary/10 text-primary" }
   }
   return { label: "Catalog lookup", className: "border-primary/20 bg-primary/10 text-primary" }
@@ -235,7 +235,7 @@ export default function AssistantPage() {
         </div>
 
         <div className="border-t pt-3 text-[10px] leading-relaxed text-muted-foreground shrink-0">
-          Medicine answers use Ethiopia EML and openFDA labels. Stock and app guidance uses MAP workflow data. The model only summarizes retrieved source text.
+          Medicine answers use Ethiopia EML, FDA label data, and selected FDA medicine guidance. Stock and app guidance uses MAP workflow data.
         </div>
       </aside>
 
