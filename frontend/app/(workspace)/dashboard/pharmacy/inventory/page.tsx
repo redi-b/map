@@ -68,9 +68,17 @@ type BatchImportResult = {
   errors: Array<{ row: number; message: string }>
 }
 
-type AddInventoryErrors = Partial<Record<"medicineId" | "quantity" | "price", string>>
+type AddInventoryErrors = Partial<Record<"medicineId" | "quantity" | "price" | "newMedicineName" | "newMedicineForm" | "newMedicineCategory", string>>
 
 type EditableStockStatus = InventoryItem["stockStatus"] | "auto"
+
+type NewMedicineForm = {
+  name: string
+  form: string
+  strength: string
+  category: string
+  manufacturer: string
+}
 
 const stockLabels = { in_stock: "In stock", low_stock: "Low stock", out_of_stock: "Out of stock" }
 const stockVariants = { in_stock: "default", low_stock: "secondary", out_of_stock: "outline" } as const
@@ -227,6 +235,18 @@ function medicineLabel(medicine: MedicineOption | InventoryItem["medicine"]) {
   return [medicine.name, medicine.strength, medicine.form ? `(${medicine.form})` : ""].filter(Boolean).join(" ")
 }
 
+function medicineSearchText(medicine: MedicineOption) {
+  return [medicine.name, medicine.form, medicine.strength, medicine.category].filter(Boolean).join(" ").toLowerCase()
+}
+
+const emptyNewMedicine: NewMedicineForm = {
+  name: "",
+  form: "",
+  strength: "",
+  category: "",
+  manufacturer: "",
+}
+
 export default function PharmacyInventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([])
   const [medicines, setMedicines] = useState<MedicineOption[]>([])
@@ -246,6 +266,9 @@ export default function PharmacyInventoryPage() {
   const [showImportGuide, setShowImportGuide] = useState(false)
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
   const [addMedicineId, setAddMedicineId] = useState("")
+  const [medicineSearch, setMedicineSearch] = useState("")
+  const [addingMissingMedicine, setAddingMissingMedicine] = useState(false)
+  const [newMedicine, setNewMedicine] = useState<NewMedicineForm>(emptyNewMedicine)
   const [addQuantity, setAddQuantity] = useState("")
   const [addPrice, setAddPrice] = useState("")
   const [addStockStatus, setAddStockStatus] = useState<EditableStockStatus>("auto")
@@ -255,6 +278,17 @@ export default function PharmacyInventoryPage() {
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<BatchImportResult | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+  const loadMedicines = useCallback(async () => {
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/medicines/list`, { credentials: "include" })
+      if (!response.ok) throw new Error("Failed to load medicines")
+      const data = await response.json()
+      setMedicines(data.medicines)
+    } catch {
+      setError("Unable to load the medicine catalog.")
+    }
+  }, [])
 
   const fetchInventory = useCallback(async (silent = false) => {
     try {
@@ -288,16 +322,25 @@ export default function PharmacyInventoryPage() {
   }, [fetchInventory])
 
   useEffect(() => {
-    fetch(`${apiBaseUrl}/api/medicines/list`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((data) => setMedicines(data.medicines))
-      .catch(() => {})
-  }, [])
+    const timeout = window.setTimeout(() => {
+      void loadMedicines()
+    }, 0)
+
+    return () => window.clearTimeout(timeout)
+  }, [loadMedicines])
 
   const displayedItems = useMemo(() => {
     if (stockFilter === "expiring") return items.filter((item) => isExpiringSoon(item) || isExpired(item))
     return items
   }, [items, stockFilter])
+
+  const filteredMedicines = useMemo(() => {
+    const query = medicineSearch.trim().toLowerCase()
+    const source = query ? medicines.filter((medicine) => medicineSearchText(medicine).includes(query)) : medicines
+    return source.slice(0, 8)
+  }, [medicineSearch, medicines])
+
+  const selectedMedicine = medicines.find((medicine) => medicine.id === addMedicineId)
 
   const stats = useMemo(() => {
     const totalUnits = items.reduce((sum, item) => sum + item.quantity, 0)
@@ -314,7 +357,13 @@ export default function PharmacyInventoryPage() {
     const quantity = Number(addQuantity)
     const price = Number(addPrice)
 
-    if (!addMedicineId) nextErrors.medicineId = "Select a medicine."
+    if (addingMissingMedicine) {
+      if (!newMedicine.name.trim()) nextErrors.newMedicineName = "Enter the medicine name."
+      if (!newMedicine.form.trim()) nextErrors.newMedicineForm = "Enter the form."
+      if (!newMedicine.category.trim()) nextErrors.newMedicineCategory = "Enter the category."
+    } else if (!addMedicineId) {
+      nextErrors.medicineId = "Select a medicine."
+    }
     if (!addQuantity.trim()) nextErrors.quantity = "Enter the quantity."
     else if (!Number.isInteger(quantity) || quantity < 0) nextErrors.quantity = "Quantity must be a whole number, 0 or higher."
     if (!addPrice.trim()) nextErrors.price = "Enter the unit price."
@@ -327,6 +376,9 @@ export default function PharmacyInventoryPage() {
   function resetAddForm() {
     setShowAdd(false)
     setAddMedicineId("")
+    setMedicineSearch("")
+    setAddingMissingMedicine(false)
+    setNewMedicine(emptyNewMedicine)
     setAddQuantity("")
     setAddPrice("")
     setAddStockStatus("auto")
@@ -395,15 +447,41 @@ export default function PharmacyInventoryPage() {
     setSaving(true)
     setError("")
     const medicine = medicines.find((m) => m.id === addMedicineId)
-    const name = medicine ? medicineLabel(medicine) : "Item"
+    let medicineId = addMedicineId
+    let name = medicine ? medicineLabel(medicine) : newMedicine.name.trim() || "Item"
 
     try {
+      if (addingMissingMedicine) {
+        const medicineResponse = await fetch(`${apiBaseUrl}/api/medicines`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            name: newMedicine.name.trim(),
+            form: newMedicine.form.trim(),
+            strength: newMedicine.strength.trim() || undefined,
+            category: newMedicine.category.trim(),
+            manufacturer: newMedicine.manufacturer.trim() || undefined,
+          }),
+        })
+
+        if (!medicineResponse.ok) {
+          const body = await medicineResponse.json().catch(() => null)
+          throw new Error(body?.error ?? "Unable to add this medicine to the catalog.")
+        }
+
+        const medicineResult = await medicineResponse.json()
+        medicineId = medicineResult.medicine.id
+        name = medicineLabel(medicineResult.medicine)
+        await loadMedicines()
+      }
+
       const response = await fetch(`${apiBaseUrl}/api/inventory`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          medicineId: addMedicineId,
+          medicineId,
           quantity: validation.quantity,
           unitPriceEtb: validation.price,
           stockStatus: addStockStatus === "auto" ? undefined : addStockStatus,
@@ -415,10 +493,11 @@ export default function PharmacyInventoryPage() {
         const body = await response.json().catch(() => null)
         throw new Error(body?.error ?? "Failed to add item")
       }
+      const result = await response.json()
 
       resetAddForm()
       await fetchInventory(true)
-      toast.success("Item added", `${name} has been added to inventory.`)
+      toast.success(result.mode === "updated" ? "Inventory updated" : "Item added", `${name} has been ${result.mode === "updated" ? "updated" : "added to inventory"}.`)
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to add item"
       setError(message)
@@ -505,6 +584,12 @@ export default function PharmacyInventoryPage() {
     setEditPrice(String(item.unitPriceEtb))
     setEditStockStatus("auto")
     setEditExpiresAt(toDateInput(item.expiresAt))
+  }
+
+  function updateNewMedicine<K extends keyof NewMedicineForm>(key: K, value: NewMedicineForm[K]) {
+    setNewMedicine((current) => ({ ...current, [key]: value }))
+    const errorKey = key === "name" ? "newMedicineName" : key === "form" ? "newMedicineForm" : key === "category" ? "newMedicineCategory" : null
+    if (errorKey) setAddErrors((current) => ({ ...current, [errorKey]: undefined }))
   }
 
   if (loading) {
@@ -617,32 +702,108 @@ export default function PharmacyInventoryPage() {
           </div>
 
           {showAdd ? (
-            <div className="grid gap-4 rounded-xl border bg-secondary/40 p-4 xl:grid-cols-[minmax(16rem,1.5fr)_8rem_8rem_10rem_10rem_auto_auto] xl:items-start">
-              <label className="grid gap-1 text-sm font-medium">
-                Medicine
-                <Select
-                  value={addMedicineId || "none"}
-                  onValueChange={(value) => {
-                    setAddMedicineId(!value || value === "none" ? "" : value)
-                    setAddErrors((current) => ({ ...current, medicineId: undefined }))
-                  }}
-                >
-                  <SelectTrigger className="w-full" aria-invalid={Boolean(addErrors.medicineId)} aria-describedby={addErrors.medicineId ? "add-medicine-error" : undefined}>
-                    <SelectValue placeholder="Select medicine..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="none">Select medicine...</SelectItem>
-                      {medicines.map((medicine) => (
-                        <SelectItem key={medicine.id} value={medicine.id}>
-                          {medicineLabel(medicine)}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-                {addErrors.medicineId ? <span id="add-medicine-error" className="text-xs text-destructive">{addErrors.medicineId}</span> : null}
-              </label>
+            <div className="grid gap-4 rounded-xl border bg-secondary/40 p-4">
+              <div className="grid gap-4 xl:grid-cols-[minmax(18rem,1.5fr)_8rem_8rem_10rem_10rem_auto_auto] xl:items-start">
+                <div className="grid gap-2 text-sm font-medium">
+                  <div className="flex items-center justify-between gap-3">
+                    <span>Medicine</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => {
+                        setAddingMissingMedicine((value) => !value)
+                        setAddMedicineId("")
+                        setAddErrors((current) => ({ ...current, medicineId: undefined }))
+                      }}
+                    >
+                      {addingMissingMedicine ? "Use catalog" : "Add missing"}
+                    </Button>
+                  </div>
+                  {addingMissingMedicine ? (
+                    <div className="grid gap-2 rounded-lg border bg-background p-3">
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <label className="grid gap-1">
+                          <span className="text-xs text-muted-foreground">Medicine name</span>
+                          <Input
+                            value={newMedicine.name}
+                            aria-invalid={Boolean(addErrors.newMedicineName)}
+                            onChange={(event) => updateNewMedicine("name", event.target.value)}
+                            placeholder="e.g. Ceftriaxone"
+                          />
+                          {addErrors.newMedicineName ? <span className="text-xs text-destructive">{addErrors.newMedicineName}</span> : null}
+                        </label>
+                        <label className="grid gap-1">
+                          <span className="text-xs text-muted-foreground">Form</span>
+                          <Input
+                            value={newMedicine.form}
+                            aria-invalid={Boolean(addErrors.newMedicineForm)}
+                            onChange={(event) => updateNewMedicine("form", event.target.value)}
+                            placeholder="Tablet, vial, syrup"
+                          />
+                          {addErrors.newMedicineForm ? <span className="text-xs text-destructive">{addErrors.newMedicineForm}</span> : null}
+                        </label>
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        <label className="grid gap-1">
+                          <span className="text-xs text-muted-foreground">Strength</span>
+                          <Input value={newMedicine.strength} onChange={(event) => updateNewMedicine("strength", event.target.value)} placeholder="500mg" />
+                        </label>
+                        <label className="grid gap-1">
+                          <span className="text-xs text-muted-foreground">Category</span>
+                          <Input
+                            value={newMedicine.category}
+                            aria-invalid={Boolean(addErrors.newMedicineCategory)}
+                            onChange={(event) => updateNewMedicine("category", event.target.value)}
+                            placeholder="Antibiotic"
+                          />
+                          {addErrors.newMedicineCategory ? <span className="text-xs text-destructive">{addErrors.newMedicineCategory}</span> : null}
+                        </label>
+                        <label className="grid gap-1">
+                          <span className="text-xs text-muted-foreground">Manufacturer</span>
+                          <Input value={newMedicine.manufacturer} onChange={(event) => updateNewMedicine("manufacturer", event.target.value)} placeholder="Optional" />
+                        </label>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid gap-2">
+                      <Input
+                        value={medicineSearch}
+                        onChange={(event) => setMedicineSearch(event.target.value)}
+                        placeholder={`Search ${medicines.length} catalog medicines`}
+                        aria-invalid={Boolean(addErrors.medicineId)}
+                      />
+                      <div className="max-h-56 overflow-y-auto rounded-lg border bg-background">
+                        {filteredMedicines.length === 0 ? (
+                          <div className="p-3 text-xs text-muted-foreground">No catalog match. Use Add missing to create a medicine entry.</div>
+                        ) : filteredMedicines.map((medicine) => (
+                          <button
+                            key={medicine.id}
+                            type="button"
+                            className={cn("flex w-full items-start justify-between gap-3 border-b px-3 py-2 text-left text-sm last:border-b-0 hover:bg-secondary/70", addMedicineId === medicine.id && "bg-primary/10")}
+                            onClick={() => {
+                              setAddMedicineId(medicine.id)
+                              setMedicineSearch(medicineLabel(medicine))
+                              setAddErrors((current) => ({ ...current, medicineId: undefined }))
+                            }}
+                          >
+                            <span>
+                              <span className="block font-medium">{medicineLabel(medicine)}</span>
+                              <span className="block text-xs text-muted-foreground">{medicine.category}</span>
+                            </span>
+                            {addMedicineId === medicine.id ? <CheckCircle2Icon className="mt-0.5 size-4 text-primary" /> : null}
+                          </button>
+                        ))}
+                      </div>
+                      {selectedMedicine ? (
+                        <div className="rounded-lg border bg-muted/30 p-2 text-xs text-muted-foreground">
+                          Selected: <span className="font-medium text-foreground">{medicineLabel(selectedMedicine)}</span>
+                        </div>
+                      ) : null}
+                      {addErrors.medicineId ? <span id="add-medicine-error" className="text-xs text-destructive">{addErrors.medicineId}</span> : null}
+                    </div>
+                  )}
+                </div>
               <label className="grid gap-1 text-sm font-medium">
                 Quantity
                 <Input type="number" min="0" value={addQuantity} aria-invalid={Boolean(addErrors.quantity)} onChange={(event) => { setAddQuantity(event.target.value); setAddErrors((current) => ({ ...current, quantity: undefined })) }} />
@@ -678,6 +839,10 @@ export default function PharmacyInventoryPage() {
               <Button className="xl:mt-6" variant="ghost" size="icon" onClick={resetAddForm}>
                 <XIcon />
               </Button>
+              </div>
+              <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+                Use the catalog for consistent patient search. If a real medicine is missing, add it once here, then save the stock line.
+              </div>
             </div>
           ) : null}
 

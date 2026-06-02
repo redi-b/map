@@ -34,6 +34,15 @@ export const batchInventoryItemsSchema = z.object({
   items: z.array(batchInventoryItemSchema).min(1).max(200),
 })
 
+export const createMedicineSchema = z.object({
+  name: cleanString(z.string().min(1).max(120)),
+  form: cleanString(z.string().min(1).max(80)),
+  strength: cleanString(z.string().max(80)).optional(),
+  category: cleanString(z.string().min(1).max(120)),
+  manufacturer: cleanString(z.string().max(120)).optional(),
+})
+
 export type AddInventoryItemInput = z.infer<typeof addInventoryItemSchema>
 export type UpdateInventoryItemInput = z.infer<typeof updateInventoryItemSchema>
 export type BatchInventoryItemInput = z.infer<typeof batchInventoryItemSchema>
+export type CreateMedicineInput = z.infer<typeof createMedicineSchema>

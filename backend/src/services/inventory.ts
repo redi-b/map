@@ -1,7 +1,7 @@
 import { and, desc, eq, ilike, ne } from "drizzle-orm"
 import { db } from "../db/client.js"
 import { inventoryItems, medicines, pharmacies, pharmacyStaff } from "../db/schema.js"
-import type { AddInventoryItemInput, BatchInventoryItemInput, UpdateInventoryItemInput } from "../validators/inventory.js"
+import type { AddInventoryItemInput, BatchInventoryItemInput, CreateMedicineInput, UpdateInventoryItemInput } from "../validators/inventory.js"
 
 function getStockStatus(quantity: number) {
   return quantity === 0 ? "out_of_stock" : quantity < 10 ? "low_stock" : "in_stock"
@@ -88,6 +88,27 @@ export async function listInventory(pharmacyId: string, filters?: { search?: str
 
 export async function addInventoryItem(pharmacyId: string, input: AddInventoryItemInput) {
   const status = input.stockStatus ?? getStockStatus(input.quantity)
+  const [existing] = await db
+    .select({ id: inventoryItems.id })
+    .from(inventoryItems)
+    .where(and(eq(inventoryItems.pharmacyId, pharmacyId), eq(inventoryItems.medicineId, input.medicineId)))
+    .limit(1)
+
+  if (existing) {
+    const [item] = await db
+      .update(inventoryItems)
+      .set({
+        quantity: input.quantity,
+        unitPriceEtb: String(input.unitPriceEtb),
+        stockStatus: status,
+        expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
+        updatedAt: new Date(),
+      })
+      .where(eq(inventoryItems.id, existing.id))
+      .returning()
+
+    return { item, mode: "updated" as const }
+  }
 
   const [item] = await db
     .insert(inventoryItems)
@@ -101,7 +122,7 @@ export async function addInventoryItem(pharmacyId: string, input: AddInventoryIt
     })
     .returning()
 
-  return item
+  return { item, mode: "created" as const }
 }
 
 export async function batchUpsertInventoryItems(pharmacyId: string, items: BatchInventoryItemInput[]) {
@@ -227,4 +248,36 @@ export async function listMedicines() {
     })
     .from(medicines)
     .orderBy(medicines.name)
+}
+
+export async function createMedicine(input: CreateMedicineInput) {
+  const catalog = await listMedicines()
+  const existing = catalog.find((medicine) =>
+    normalizeLookup(medicine.name) === normalizeLookup(input.name) &&
+    normalizeLookup(medicine.form) === normalizeLookup(input.form) &&
+    normalizeLookup(medicine.strength) === normalizeLookup(input.strength),
+  )
+
+  if (existing) {
+    return { medicine: existing, mode: "existing" as const }
+  }
+
+  const [medicine] = await db
+    .insert(medicines)
+    .values({
+      name: input.name,
+      form: input.form,
+      strength: input.strength || null,
+      category: input.category,
+      manufacturer: input.manufacturer || null,
+    })
+    .returning({
+      id: medicines.id,
+      name: medicines.name,
+      form: medicines.form,
+      strength: medicines.strength,
+      category: medicines.category,
+    })
+
+  return { medicine, mode: "created" as const }
 }

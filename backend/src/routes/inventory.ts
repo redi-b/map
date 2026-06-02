@@ -4,13 +4,14 @@ import { writeAuditLog } from "../services/audit.js"
 import {
   addInventoryItem,
   batchUpsertInventoryItems,
+  createMedicine,
   deleteInventoryItem,
   getPharmacyForStaff,
   listInventory,
   listMedicines,
   updateInventoryItem,
 } from "../services/inventory.js"
-import { addInventoryItemSchema, batchInventoryItemsSchema, updateInventoryItemSchema } from "../validators/inventory.js"
+import { addInventoryItemSchema, batchInventoryItemsSchema, createMedicineSchema, updateInventoryItemSchema } from "../validators/inventory.js"
 
 export const inventoryRoutes: FastifyPluginAsync = async (app) => {
   /** GET /inventory — list inventory for the pharmacist's pharmacy. */
@@ -44,20 +45,20 @@ export const inventoryRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(400).send({ error: "Invalid data", details: parsed.error.flatten().fieldErrors })
     }
 
-    const item = await addInventoryItem(pharmacyId, parsed.data)
+    const result = await addInventoryItem(pharmacyId, parsed.data)
     await writeAuditLog({
       actorProfileId: context.profile.id,
-      action: "inventory.add",
+      action: result.mode === "created" ? "inventory.add" : "inventory.update_existing",
       entityType: "inventory_item",
-      entityId: item.id,
+      entityId: result.item.id,
       details: {
         pharmacyId,
-        medicineId: item.medicineId,
-        quantity: item.quantity,
+        medicineId: result.item.medicineId,
+        quantity: result.item.quantity,
         unitPriceEtb: parsed.data.unitPriceEtb,
       },
     })
-    return reply.status(201).send(item)
+    return reply.status(result.mode === "created" ? 201 : 200).send(result)
   })
 
   /** POST /inventory/batch — import or update items from spreadsheet rows. */
@@ -163,5 +164,32 @@ export const inventoryRoutes: FastifyPluginAsync = async (app) => {
     if (!context) return
 
     return { medicines: await listMedicines() }
+  })
+
+  /** POST /medicines — add a missing catalog medicine. */
+  app.post("/medicines", async (request, reply) => {
+    const context = await requireProfile(request, reply, ["pharmacist", "admin"])
+    if (!context) return
+
+    const parsed = createMedicineSchema.safeParse(request.body)
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "Invalid data", details: parsed.error.flatten().fieldErrors })
+    }
+
+    const result = await createMedicine(parsed.data)
+    await writeAuditLog({
+      actorProfileId: context.profile.id,
+      action: result.mode === "created" ? "medicine.create" : "medicine.use_existing",
+      entityType: "medicine",
+      entityId: result.medicine.id,
+      details: {
+        name: result.medicine.name,
+        form: result.medicine.form,
+        strength: result.medicine.strength,
+        category: result.medicine.category,
+      },
+    })
+
+    return reply.status(result.mode === "created" ? 201 : 200).send(result)
   })
 }
