@@ -52,6 +52,12 @@ function formatDistance(distanceMeters: number) {
   return `${(distanceMeters / 1000).toFixed(1)}km away`
 }
 
+function distanceOriginLabel(userLocation: UserLocation | null, selectedNeighborhood: string) {
+  if (userLocation) return "from your current location"
+  if (selectedNeighborhood) return `from ${selectedNeighborhood} center`
+  return "from Bole center"
+}
+
 function formatExpiry(value: string | null) {
   if (!value) return "Expiry not listed"
   return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value))
@@ -137,9 +143,18 @@ export function MedicineSearch() {
   const hasAvailableResults = availableResults.length > 0
   const hasDeliveryResults = availableResults.some((item) => item.deliveryAvailable)
   const canBroadcastRequest = hasSearched && (!hasAvailableResults || (collectionMethod === "delivery" && !hasDeliveryResults))
-  const activeFilterCount = [inStockOnly, deliveryOnly, underFiveHundred, !!selectedNeighborhood].filter(Boolean).length
+  const activeFilterCount = [inStockOnly, deliveryOnly, underFiveHundred, !!selectedNeighborhood, !!userLocation].filter(Boolean).length
+  const distanceOrigin = distanceOriginLabel(userLocation, selectedNeighborhood)
+  const nearestDistanceMeters = results.length ? Math.min(...results.map((r) => r.distanceMeters)) : null
 
   function captureCurrentLocation() {
+    if (userLocation) {
+      setUserLocation(null)
+      setError("")
+      if (hasSearched) void runSearch(searchedQuery || query, null)
+      return
+    }
+
     if (!navigator.geolocation) {
       setError("Location comparison is not available in this browser.")
       return
@@ -167,10 +182,11 @@ export function MedicineSearch() {
     )
   }
 
-  async function runSearch(overrideQuery?: string, overrideLocation?: UserLocation | null) {
+  async function runSearch(overrideQuery?: string, overrideLocation?: UserLocation | null, overrideNeighborhood?: string) {
     const searchQuery = overrideQuery ?? query
     const trimmedQuery = searchQuery.trim()
-    const searchLocation = overrideLocation ?? userLocation
+    const searchLocation = overrideLocation === undefined ? userLocation : overrideLocation
+    const searchNeighborhood = overrideNeighborhood === undefined ? selectedNeighborhood : overrideNeighborhood
 
     if (trimmedQuery.length < 2) {
       setError("Enter at least 2 characters to search.")
@@ -183,7 +199,7 @@ export function MedicineSearch() {
     try {
       const filters: SearchFilters = {
         q: trimmedQuery,
-        neighborhood: selectedNeighborhood || undefined,
+        neighborhood: searchNeighborhood || undefined,
         inStock: inStockOnly || undefined,
         delivery: deliveryOnly || undefined,
         maxPrice: underFiveHundred ? 500 : undefined,
@@ -213,6 +229,8 @@ export function MedicineSearch() {
     setDeliveryOnly(false)
     setUnderFiveHundred(false)
     setSelectedNeighborhood("")
+    setUserLocation(null)
+    if (hasSearched) void runSearch(searchedQuery || query, null, "")
   }
 
   function updateCollectionMethod(method: CollectionMethod) {
@@ -446,7 +464,7 @@ export function MedicineSearch() {
               onClick={captureCurrentLocation}
             >
               {locating ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <MapPinIcon data-icon="inline-start" />}
-              Current location
+              {userLocation ? "Using current location" : "Current location"}
             </Button>
 
             {activeFilterCount > 0 ? (
@@ -484,6 +502,12 @@ export function MedicineSearch() {
                 </span>
               ) : null}
             </p>
+          </div>
+        ) : null}
+
+        {hasSearched ? (
+          <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            Distances shown {distanceOrigin}.
           </div>
         ) : null}
 
@@ -695,7 +719,7 @@ export function MedicineSearch() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Nearest</span>
-                  <span className="font-medium">{formatDistance(Math.min(...results.map((r) => r.distanceMeters)))}</span>
+                  <span className="font-medium">{nearestDistanceMeters ? formatDistance(nearestDistanceMeters) : "Not available"}</span>
                 </div>
               </div>
             </CardContent>
@@ -728,6 +752,7 @@ export function MedicineSearch() {
                   <div className="rounded-xl border p-3">
                     <p className="text-xs text-muted-foreground">Distance</p>
                     <p className="mt-1 font-medium">{formatDistance(selectedResult.distanceMeters)}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{distanceOrigin}</p>
                   </div>
                 </div>
 
