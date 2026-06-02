@@ -41,21 +41,87 @@ async function notificationExistsToday(patientProfileId: string, sourceEntityId:
   return Boolean(existing)
 }
 
-function sameDay(left: Date, right: Date) {
-  return left.getFullYear() === right.getFullYear() && left.getMonth() === right.getMonth() && left.getDate() === right.getDate()
+function sameMinute(left: Date, right: Date) {
+  return Math.abs(left.getTime() - right.getTime()) < 60 * 1000
 }
 
-function doseTimesForReminder(nextDoseAt: Date, frequency: string) {
+function repeatIntervalHours(frequency: string) {
   const normalized = frequency.toLowerCase()
-  const offsets = normalized.includes("every 8 hours")
-    ? [0, 8]
-    : normalized.includes("twice daily")
-      ? [0, 12]
-      : [0]
+  const everyHoursMatch = normalized.match(/every\s+(\d{1,2})\s*hours?/)
 
-  return offsets
-    .map((hours) => new Date(nextDoseAt.getTime() + hours * 60 * 60 * 1000))
-    .filter((date) => sameDay(date, nextDoseAt))
+  if (everyHoursMatch) {
+    const hours = Number(everyHoursMatch[1])
+    return Number.isInteger(hours) && hours >= 1 && hours <= 24 ? hours : null
+  }
+
+  if (normalized.includes("twice daily")) return 12
+  if (normalized.includes("once daily") || normalized.includes("at bedtime")) return 24
+  return null
+}
+
+function doseTimesForDay(nextDoseAt: Date, frequency: string, start: Date, end: Date) {
+  const intervalHours = repeatIntervalHours(frequency)
+  if (!intervalHours) {
+    return nextDoseAt >= start && nextDoseAt < end ? [nextDoseAt] : []
+  }
+
+  const intervalMs = intervalHours * 60 * 60 * 1000
+  const times: Date[] = []
+  let scheduledAt = new Date(nextDoseAt)
+
+  while (scheduledAt < start) {
+    scheduledAt = new Date(scheduledAt.getTime() + intervalMs)
+  }
+
+  while (scheduledAt < end) {
+    times.push(new Date(scheduledAt))
+    scheduledAt = new Date(scheduledAt.getTime() + intervalMs)
+  }
+
+  return times
+}
+
+async function ensureTodayDoseEvents(patientProfileId: string) {
+  const { start, end } = todayRange()
+  const reminders = await db
+    .select({
+      id: medicationReminders.id,
+      frequency: medicationReminders.frequency,
+      nextDoseAt: medicationReminders.nextDoseAt,
+    })
+    .from(medicationReminders)
+    .where(
+      and(
+        eq(medicationReminders.patientProfileId, patientProfileId),
+        eq(medicationReminders.isActive, true),
+        lt(medicationReminders.nextDoseAt, end),
+      ),
+    )
+
+  for (const reminder of reminders) {
+    const expectedTimes = doseTimesForDay(reminder.nextDoseAt, reminder.frequency, start, end)
+    if (!expectedTimes.length) continue
+
+    const existingRows = await db
+      .select({ scheduledAt: doseEvents.scheduledAt })
+      .from(doseEvents)
+      .where(
+        and(
+          eq(doseEvents.reminderId, reminder.id),
+          gte(doseEvents.scheduledAt, start),
+          lt(doseEvents.scheduledAt, end),
+        ),
+      )
+
+    const missingTimes = expectedTimes.filter((scheduledAt) => !existingRows.some((row) => sameMinute(row.scheduledAt, scheduledAt)))
+    if (!missingTimes.length) continue
+
+    await db.insert(doseEvents).values(missingTimes.map((scheduledAt) => ({
+      reminderId: reminder.id,
+      scheduledAt,
+      status: "upcoming" as const,
+    })))
+  }
 }
 
 export async function listTodayAdherence(patientProfileId: string) {
@@ -113,6 +179,8 @@ export async function listTodayAdherence(patientProfileId: string) {
 }
 
 export async function syncAdherenceNotifications(patientProfileId: string) {
+  await ensureTodayDoseEvents(patientProfileId)
+
   const { start, end } = todayRange()
   const now = new Date()
   const soon = new Date(now.getTime() + 30 * 60 * 1000)
@@ -192,11 +260,16 @@ export async function createReminder(patientProfileId: string, input: CreateRemi
     })
     .returning()
 
-  await db.insert(doseEvents).values(doseTimesForReminder(nextDoseAt, input.frequency).map((scheduledAt) => ({
-    reminderId: reminder.id,
-    scheduledAt,
-    status: "upcoming" as const,
-  })))
+  const { start, end } = todayRange()
+  const scheduledTimes = doseTimesForDay(nextDoseAt, input.frequency, start, end)
+
+  if (scheduledTimes.length) {
+    await db.insert(doseEvents).values(scheduledTimes.map((scheduledAt) => ({
+      reminderId: reminder.id,
+      scheduledAt,
+      status: "upcoming" as const,
+    })))
+  }
 
   await createNotification(
     patientProfileId,

@@ -45,7 +45,7 @@ const statusConfig = {
   bg: string
 }>
 
-const frequencyOptions = ["Once daily", "Twice daily", "Every 8 hours", "Before meals", "After meals", "At bedtime"]
+const frequencyOptions = ["Once daily", "Twice daily", "Every 8 hours", "Every 6 hours", "At bedtime", "Custom interval"]
 
 function emptySummary(): TodayAdherence["summary"] {
   return { total: 0, taken: 0, skipped: 0, upcoming: 0, progress: 0, refillAlerts: 0 }
@@ -79,6 +79,7 @@ export function AdherenceTracker() {
   const [medicineName, setMedicineName] = useState("")
   const [dosage, setDosage] = useState("")
   const [frequency, setFrequency] = useState("Once daily")
+  const [customIntervalHours, setCustomIntervalHours] = useState("")
   const [scheduleNote, setScheduleNote] = useState("")
   const [nextDoseAt, setNextDoseAt] = useState(defaultNextDoseValue)
   const [supplyRemainingDays, setSupplyRemainingDays] = useState("")
@@ -168,6 +169,15 @@ export function AdherenceTracker() {
 
   async function handleCreateReminder(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const intervalHours = Number(customIntervalHours)
+    const reminderFrequency = frequency === "Custom interval" ? `Every ${intervalHours} hours` : frequency
+
+    if (frequency === "Custom interval" && (!Number.isInteger(intervalHours) || intervalHours < 1 || intervalHours > 24)) {
+      setError("Custom interval must be a whole number from 1 to 24 hours.")
+      toast.error("Reminder not saved", "Custom interval must be a whole number from 1 to 24 hours.")
+      return
+    }
+
     setSaving(true)
     setError("")
 
@@ -175,13 +185,14 @@ export function AdherenceTracker() {
       await createReminder({
         medicineName,
         dosage,
-        frequency: scheduleNote.trim() ? `${frequency} (${scheduleNote.trim()})` : frequency,
+        frequency: scheduleNote.trim() ? `${reminderFrequency} (${scheduleNote.trim()})` : reminderFrequency,
         nextDoseAt: new Date(nextDoseAt).toISOString(),
         supplyRemainingDays: supplyRemainingDays ? Number(supplyRemainingDays) : undefined,
       })
       setMedicineName("")
       setDosage("")
       setFrequency("Once daily")
+      setCustomIntervalHours("")
       setScheduleNote("")
       setNextDoseAt(defaultNextDoseValue())
       setSupplyRemainingDays("")
@@ -247,7 +258,7 @@ export function AdherenceTracker() {
         <Card>
           <CardHeader>
             <CardTitle>Add adherence entry</CardTitle>
-            <CardDescription>Set the next exact dose time. Supported repeat patterns create same-day dose entries; notes are saved as context only.</CardDescription>
+            <CardDescription>Set the next dose time and repeat interval. MAP uses that schedule for in-app due-dose notifications.</CardDescription>
           </CardHeader>
           <CardContent>
             <form className="grid gap-4" onSubmit={handleCreateReminder}>
@@ -272,12 +283,23 @@ export function AdherenceTracker() {
                       </SelectGroup>
                     </SelectContent>
                   </Select>
-                  <span className="text-xs text-muted-foreground">Automated same-day entries are created only for supported repeat patterns.</span>
+                  <span className="text-xs text-muted-foreground">Notifications follow the selected time, then repeat by this interval while the app is active.</span>
+                  {frequency === "Custom interval" ? (
+                    <Input
+                      type="number"
+                      min="1"
+                      max="24"
+                      value={customIntervalHours}
+                      onChange={(event) => setCustomIntervalHours(event.target.value)}
+                      placeholder="Hours between doses"
+                      required
+                    />
+                  ) : null}
                 </label>
                 <label className="grid gap-1 text-sm font-medium">
                   Schedule note
                   <Input value={scheduleNote} onChange={(event) => setScheduleNote(event.target.value)} placeholder="Optional, e.g. after breakfast" />
-                  <span className="text-xs text-muted-foreground">Notes help you remember instructions; they do not create extra notification times.</span>
+                  <span className="text-xs text-muted-foreground">Notes are shown with the dose entry. They do not change notification timing.</span>
                 </label>
               </div>
               <div className="grid gap-3 md:grid-cols-[minmax(13rem,1fr)_12rem_auto] md:items-start">
