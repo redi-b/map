@@ -133,6 +133,10 @@ export function MedicineSearch() {
     })
   }, [deliveryOnly, inStockOnly, results, underFiveHundred])
 
+  const availableResults = useMemo(() => filteredResults.filter((item) => item.stockStatus !== "out_of_stock"), [filteredResults])
+  const hasAvailableResults = availableResults.length > 0
+  const hasDeliveryResults = availableResults.some((item) => item.deliveryAvailable)
+  const canBroadcastRequest = hasSearched && (!hasAvailableResults || (collectionMethod === "delivery" && !hasDeliveryResults))
   const activeFilterCount = [inStockOnly, deliveryOnly, underFiveHundred, !!selectedNeighborhood].filter(Boolean).length
 
   function captureCurrentLocation() {
@@ -221,6 +225,27 @@ export function MedicineSearch() {
     return collectionMethod === "delivery" ? "delivery-capable pharmacies" : "verified pharmacies"
   }
 
+  function getBroadcastMessage() {
+    if (!hasSearched) return "Search first. Broadcast is available when the search does not show a usable result."
+    if (!hasAvailableResults) return `No usable stock result is visible for "${searchedQuery}". Broadcast can ask pharmacies to confirm stock.`
+    if (collectionMethod === "delivery" && !hasDeliveryResults) return "Available stock is pickup-only in the visible results. Broadcast can ask delivery-capable pharmacies."
+    return "Visible stock is available. Use result details for delivery or proxy pickup, or visit/call the pharmacy for self pickup."
+  }
+
+  function canSendTargetRequest(target: MedicineSearchResult) {
+    if (collectionMethod === "delivery") return target.deliveryAvailable
+    if (collectionMethod === "proxy") return true
+    return target.stockStatus === "out_of_stock"
+  }
+
+  function getTargetRequestMessage(target: MedicineSearchResult) {
+    if (collectionMethod === "delivery" && !target.deliveryAvailable) return "Delivery is not supported by this pharmacy."
+    if (collectionMethod === "delivery") return "Send this request when you want the selected pharmacy to handle delivery."
+    if (collectionMethod === "proxy") return "Send this request when someone else will collect the medicine for you."
+    if (target.stockStatus === "out_of_stock") return "Ask this pharmacy to confirm restock or next steps."
+    return "Self pickup does not need a request when verified stock is already shown. Visit or call the pharmacy."
+  }
+
   function getRequestValidationMessage(target?: MedicineSearchResult) {
     if (collectionMethod === "delivery" && !deliveryAddress.trim()) {
       return "Enter a delivery address before sending a delivery request."
@@ -237,6 +262,15 @@ export function MedicineSearch() {
   async function sendAvailabilityRequest(target?: MedicineSearchResult) {
     const medicineName = (target?.medicine || searchedQuery || query).trim()
     if (!medicineName) return
+
+    if (!target && !canBroadcastRequest) {
+      setError(getBroadcastMessage())
+      return
+    }
+    if (target && !canSendTargetRequest(target)) {
+      setSheetError(getTargetRequestMessage(target))
+      return
+    }
 
     const validationMessage = getRequestValidationMessage(target)
     if (validationMessage) {
@@ -281,7 +315,7 @@ export function MedicineSearch() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="font-[var(--font-display)] text-xl font-semibold">Search verified stock</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Use the filters to narrow results before sending a request or visiting a branch.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Find available stock first. Requests are for delivery, proxy pickup, or hard-to-find medicines.</p>
             </div>
             <Badge variant="outline">
               <ShieldCheckIcon className="mr-1 size-3" />
@@ -538,11 +572,9 @@ export function MedicineSearch() {
       <div className="flex flex-col gap-4">
         <Card className="h-fit">
           <CardHeader>
-            <CardTitle>Broadcast stock request</CardTitle>
+            <CardTitle>Request help</CardTitle>
             <CardDescription>
-              {collectionMethod === "delivery"
-                ? "Delivery broadcasts go only to pharmacies marked as delivery-capable."
-                : "Ask verified pharmacies to confirm stock for hard-to-find medicines."}
+              Broadcast is available when search results do not show usable stock, or when delivery is needed but visible stock is pickup-only.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
@@ -622,9 +654,12 @@ export function MedicineSearch() {
               </div>
             ) : null}
             <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
-              This sends a {collectionMethodLabels[collectionMethod].toLowerCase()} request to {getBroadcastDestination()}.
+              {getBroadcastMessage()}
+              {canBroadcastRequest ? (
+                <span className="mt-1 block">This sends a {collectionMethodLabels[collectionMethod].toLowerCase()} request to {getBroadcastDestination()}.</span>
+              ) : null}
             </div>
-            <Button className="w-full" disabled={!(searchedQuery || query).trim() || requesting} onClick={() => void sendAvailabilityRequest()}>
+            <Button className="w-full" disabled={!canBroadcastRequest || !(searchedQuery || query).trim() || requesting} onClick={() => void sendAvailabilityRequest()}>
               {requesting ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <SendIcon data-icon="inline-start" />}
               Send broadcast
             </Button>
@@ -674,7 +709,7 @@ export function MedicineSearch() {
             <>
               <SheetHeader>
                 <SheetTitle>{selectedResult.medicine}</SheetTitle>
-                <SheetDescription>More context to help you decide whether to visit, call, or send a request.</SheetDescription>
+                <SheetDescription>More context to help you decide whether to visit, call, request delivery, or request proxy pickup.</SheetDescription>
               </SheetHeader>
               <div className="grid gap-4 px-4 pb-4">
                 <div className="grid grid-cols-2 gap-3">
@@ -720,10 +755,10 @@ export function MedicineSearch() {
                     </div>
                   </div>
                   <div className="rounded-xl border bg-primary/5 p-3 text-muted-foreground">
-                    Updated {selectedResult.updatedAt}. Stock can change quickly, so call ahead or use a broadcast request when availability is critical.
+                    Updated {selectedResult.updatedAt}. Stock can change quickly, so call ahead when the medicine is urgent.
                   </div>
                   <div className="rounded-xl border bg-muted/30 p-3 text-muted-foreground">
-                    This sends a {collectionMethodLabels[collectionMethod].toLowerCase()} request only to {selectedResult.pharmacy}.
+                    {getTargetRequestMessage(selectedResult)}
                   </div>
                   {collectionMethod === "delivery" && !selectedResult.deliveryAvailable ? (
                     <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
@@ -731,7 +766,7 @@ export function MedicineSearch() {
                     </div>
                   ) : null}
                   {sheetError ? <p className="text-sm text-destructive">{sheetError}</p> : null}
-                  <Button type="button" disabled={requesting || (collectionMethod === "delivery" && !selectedResult.deliveryAvailable)} onClick={() => void sendAvailabilityRequest(selectedResult)}>
+                  <Button type="button" disabled={requesting || !canSendTargetRequest(selectedResult)} onClick={() => void sendAvailabilityRequest(selectedResult)}>
                     {requesting ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : <SendIcon data-icon="inline-start" />}
                     Send to this pharmacy
                   </Button>
