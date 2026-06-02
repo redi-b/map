@@ -5,7 +5,7 @@ import { AuthNav } from "@/components/map/auth-nav"
 const paths = [
   "Find medicine near home or work",
   "Track prescription requests",
-  "Keep pharmacy stock and requests organized",
+  "Keep dose and refill reminders close",
 ]
 
 export default function RegisterPage() {
@@ -17,11 +17,11 @@ export default function RegisterPage() {
           <div>
             <p className="text-sm font-semibold uppercase text-muted-foreground">Get started</p>
             <h1 className="mt-4 max-w-2xl font-[var(--font-display)] text-5xl font-semibold leading-tight">
-              One account for medicine access work.
+              Create a patient account for medicine access.
             </h1>
             <p className="mt-4 max-w-xl text-muted-foreground">
-              Choose your workspace after signup. Patients get care tools. Pharmacy teams get
-              stock and request tools.
+              Public signup is for patients and caregivers. Pharmacy staff sign in with an
+              account created by the MAP admin, then complete pharmacy setup.
             </p>
           </div>
           <div className="rounded-lg border bg-background/70">
@@ -39,7 +39,7 @@ export default function RegisterPage() {
           <div className="w-full max-w-md">
             <RegisterForm />
             <p className="mt-4 text-center text-sm text-muted-foreground">
-              Already registered?{" "}
+              Already have an account?{" "}
               <Link className="font-medium text-foreground underline" href="/login">
                 Sign in
               </Link>

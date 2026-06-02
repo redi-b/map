@@ -302,9 +302,9 @@ export default function LandingPage() {
       <section className="mx-auto max-w-7xl px-5 py-16">
         <div className="rounded-lg border bg-card p-8 md:p-12">
           <Badge variant="secondary">Ready when you need it</Badge>
-          <h2 className="mt-4 max-w-3xl font-[var(--font-display)] text-4xl font-semibold">Start with a medicine search, prescription request, or pharmacy account.</h2>
+          <h2 className="mt-4 max-w-3xl font-[var(--font-display)] text-4xl font-semibold">Start with a medicine search, prescription request, or pharmacy staff login.</h2>
           <p className="mt-3 max-w-2xl text-muted-foreground">
-            Create an account to save requests, track replies, and keep reminders connected to your care.
+            Patients can create an account directly. Pharmacy teams sign in after an admin registers their branch.
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <LandingAuthActions placement="section" />

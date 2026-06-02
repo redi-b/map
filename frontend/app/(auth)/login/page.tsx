@@ -18,11 +18,11 @@ export default function LoginPage() {
           <div>
             <p className="text-sm font-semibold uppercase text-muted-foreground">Welcome back</p>
             <h1 className="mt-4 max-w-2xl font-[var(--font-display)] text-5xl font-semibold leading-tight">
-              Pick up from your last medicine request.
+              Sign in to your MAP workspace.
             </h1>
             <p className="mt-4 max-w-xl text-muted-foreground">
-              MAP keeps care tasks and pharmacy replies in one quiet workspace, so patients and
-              pharmacy teams can move faster without losing context.
+              Patients continue searches, prescriptions, and reminders. Pharmacy staff use the
+              admin-created account to finish setup and manage requests.
             </p>
           </div>
           <div className="rounded-lg border bg-background/70">
@@ -45,9 +45,9 @@ export default function LoginPage() {
               <LoginForm />
             </Suspense>
             <p className="mt-4 text-center text-sm text-muted-foreground">
-              New to MAP?{" "}
+              New patient or caregiver?{" "}
               <Link className="font-medium text-foreground underline" href="/register">
-                Create an account
+                Create patient account
               </Link>
             </p>
           </div>

@@ -51,7 +51,7 @@ export function LoginForm() {
       <CardHeader className="space-y-2">
         <CardTitle className="font-[var(--font-display)] text-2xl">Sign in</CardTitle>
         <CardDescription>
-          Continue to medicine searches, prescription replies, and reminder tools.
+          Use your patient account or admin-created pharmacy staff account.
         </CardDescription>
       </CardHeader>
       <CardContent>

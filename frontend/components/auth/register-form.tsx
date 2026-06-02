@@ -35,9 +35,9 @@ export function RegisterForm() {
   return (
     <Card className="border-border/70 shadow-sm">
       <CardHeader className="space-y-2">
-        <CardTitle className="font-[var(--font-display)] text-2xl">Create an account</CardTitle>
+        <CardTitle className="font-[var(--font-display)] text-2xl">Create patient account</CardTitle>
         <CardDescription>
-          Set up a secure workspace for care requests or pharmacy operations.
+          Use this for medicine searches, prescription requests, and reminders.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -82,9 +82,12 @@ export function RegisterForm() {
           ) : null}
           <Button type="submit" size="lg" disabled={loading}>
             {loading ? <Loader2Icon data-icon="inline-start" className="animate-spin" /> : null}
-            Create account
+            Create patient account
           </Button>
         </form>
+        <p className="mt-4 text-xs text-muted-foreground">
+          Pharmacy accounts are created by an admin. If your pharmacy was registered, sign in with the provided credentials.
+        </p>
       </CardContent>
     </Card>
   )

@@ -57,7 +57,7 @@ export function LandingAuthActions({ placement = "nav" }: { placement?: "nav" | 
     return (
       <>
         <Link className={buttonVariants()} href="/register">
-          Create account
+          Create patient account
         </Link>
         <Link className={cn(buttonVariants({ variant: "outline" }), "bg-card")} href="/login">
           Sign in
@@ -72,7 +72,7 @@ export function LandingAuthActions({ placement = "nav" }: { placement?: "nav" | 
         Sign in
       </Link>
       <Link className={buttonVariants()} href="/register">
-        Create account
+        Patient signup
       </Link>
     </>
   )
