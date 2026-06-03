@@ -150,6 +150,8 @@ export async function searchMedicines(query: MedicineSearchQuery) {
       pharmacyId: pharmacies.id,
       pharmacy: pharmacies.name,
       pharmacyBranch: pharmacies.branchName,
+      pharmacyPhone: pharmacies.phone,
+      pharmacyEmail: pharmacies.email,
       neighborhood: pharmacies.neighborhood,
       latitude: pharmacies.latitude,
       longitude: pharmacies.longitude,
@@ -179,6 +181,8 @@ export async function searchMedicines(query: MedicineSearchQuery) {
     pharmacy: row.pharmacyBranch
       ? `${row.pharmacy} - ${row.pharmacyBranch}`
       : row.pharmacy,
+    pharmacyPhone: row.pharmacyPhone,
+    pharmacyEmail: row.pharmacyEmail,
     neighborhood: row.neighborhood,
     distanceMeters: estimateDistanceMeters({
       latitude: row.latitude,

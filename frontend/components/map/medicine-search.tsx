@@ -770,6 +770,16 @@ export function MedicineSearch() {
                     <div>
                       <p className="font-medium">{selectedResult.pharmacy}</p>
                       <p className="text-muted-foreground">{selectedResult.neighborhood}</p>
+                      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        <a className="font-medium text-foreground underline-offset-2 hover:underline" href={`tel:${selectedResult.pharmacyPhone}`}>
+                          {selectedResult.pharmacyPhone}
+                        </a>
+                        {selectedResult.pharmacyEmail ? (
+                          <a className="font-medium text-foreground underline-offset-2 hover:underline" href={`mailto:${selectedResult.pharmacyEmail}`}>
+                            {selectedResult.pharmacyEmail}
+                          </a>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-start gap-3 rounded-xl border p-3">

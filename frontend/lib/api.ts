@@ -31,6 +31,8 @@ export type MedicineSearchResult = {
   category: string
   pharmacyId: string
   pharmacy: string
+  pharmacyPhone: string
+  pharmacyEmail: string | null
   neighborhood: string
   distanceMeters: number
   priceEtb: number
